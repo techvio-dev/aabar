@@ -1,0 +1,43 @@
+# Python Bytecode
+*.pyc
+*.pyo
+__pycache__/
+
+# Environment Variables
+.env
+*.env
+
+# Virtual Environments
+venv/
+env/
+
+# Streamlit Caches and Logs
+.streamlit/
+*.stcache
+*.stconfig
+
+# FastAPI Logs
+*.log
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# IDE-specific Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing and Debugging Files
+coverage/
+*.coverage
+pytest_cache/
+.tox/
+*.bak
+
+# Output Files
+*.sqlite3
+*.db
+*.json
+
