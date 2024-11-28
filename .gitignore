@@ -41,3 +41,5 @@ pytest_cache/
 *.db
 *.json
 
+# Binary Files
+bins/*
