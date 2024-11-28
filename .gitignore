@@ -43,3 +43,6 @@ pytest_cache/
 
 # Binary Files
 bins/*
+
+# Logs
+logs/*
