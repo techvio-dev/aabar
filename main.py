@@ -165,6 +165,24 @@ def run():
             step_one()
         elif st.session_state["digwell_step"] == 2:
             step_two()
+    elif selected_tab == "AnzarChat":
+        st.title("AnzarChat")
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("What is up?"):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                response = "Hello! How can I help you today?"  # Replace with your response logic
+                st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
     elif selected_tab == "Logout":
         st.session_state.clear()
         st.write("You have logged out.")
