@@ -76,7 +76,7 @@ class WellNetworkPredictor:
         try:
             if not os.path.exists(filepath):
                 logging.info(f"{filepath} not found. Attempting to download and extract ZIP file.")
-                zip_url = 'https://example.com/path/to/your/model_and_network.zip'
+                zip_url = 'https://drive.google.com/file/d/1fUU_R3olfoXUa0-6slxH_LxYGmczvVj3/view?usp=sharing'
                 self.download_and_extract_zip(zip_url)
             
             logging.info(f"Loading Random Forest model from: {filepath}")
@@ -92,8 +92,7 @@ class WellNetworkPredictor:
         try:
             if not os.path.exists(filepath):
                 logging.info(f"{filepath} not found. Attempting to download and extract ZIP file.")
-                # TODO: #1 Replace with actual download URL
-                zip_url = 'https://example.com/path/to/your/model_and_network.zip'
+                zip_url = 'https://drive.google.com/file/d/1fUU_R3olfoXUa0-6slxH_LxYGmczvVj3/view?usp=sharing'
                 self.download_and_extract_zip(zip_url)
             logging.info(f"Loading well network from: {filepath}")
             with open(filepath, 'rb') as f:

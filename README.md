@@ -1,7 +1,6 @@
 # Aabar
 Well well well, what we got here?
 
-
 Too lazy to document so take this:
 ```
 pip install streamlit fastapi requests uvicorn
