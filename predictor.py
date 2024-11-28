@@ -5,6 +5,9 @@ import ee
 from google.oauth2 import service_account
 import logging
 import os
+import gdown
+import zipfile
+import networkx as nx
 
 class WellNetworkPredictor:
     """
@@ -36,7 +39,7 @@ class WellNetworkPredictor:
             credentials = service_account.Credentials.from_service_account_file(
                 key_path, scopes=['https://www.googleapis.com/auth/earthengine']
             )
-            logging.info("Initializing Google Earth Engine")
+            logging.info("\nInitializing Google Earth Engine")
             ee.Initialize(credentials=credentials, project=project)
             logging.info("Google Earth Engine initialized successfully")
         except Exception as e:
@@ -48,9 +51,34 @@ class WellNetworkPredictor:
             self.well_net = self.load_well_network(well_network_filepath)
         except Exception as e:
             logging.error(f"Error loading model or well network: {e}")
+            
+    def download_and_extract_zip(self, zip_url, extract_to='bins'):
+        try:
+            zip_filepath = os.path.join(extract_to, 'model_and_network.zip')
+            if not os.path.exists(zip_filepath):
+                logging.info(f"{zip_filepath} not found. Downloading from {zip_url}.")
+                gdown.download(zip_url, zip_filepath, quiet=False)
+                logging.info(f"Downloaded ZIP file to: {zip_filepath}")
+            else:
+                logging.info(f"ZIP file already exists at: {zip_filepath}")
+            
+            if not os.path.exists(extract_to):
+                os.makedirs(extract_to)
+            
+            logging.info(f"Extracting ZIP file to: {extract_to}")
+            with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+                zip_ref.extractall(extract_to)
+            logging.info("ZIP file extracted successfully")
+        except Exception as e:
+            logging.error(f"Error downloading or extracting ZIP file: {e}")
         
     def load_rf_model(self, filepath):
         try:
+            if not os.path.exists(filepath):
+                logging.info(f"{filepath} not found. Attempting to download and extract ZIP file.")
+                zip_url = 'https://example.com/path/to/your/model_and_network.zip'
+                self.download_and_extract_zip(zip_url)
+            
             logging.info(f"Loading Random Forest model from: {filepath}")
             with open(filepath, 'rb') as f:
                 rf_model = pickle.load(f)
@@ -62,6 +90,11 @@ class WellNetworkPredictor:
 
     def load_well_network(self, filepath):
         try:
+            if not os.path.exists(filepath):
+                logging.info(f"{filepath} not found. Attempting to download and extract ZIP file.")
+                # TODO: #1 Replace with actual download URL
+                zip_url = 'https://example.com/path/to/your/model_and_network.zip'
+                self.download_and_extract_zip(zip_url)
             logging.info(f"Loading well network from: {filepath}")
             with open(filepath, 'rb') as f:
                 well_net = pickle.load(f)
@@ -254,7 +287,7 @@ class WellNetworkPredictor:
                 logging.info(f"Predicted depth using Random Forest model: {predicted_depth} meters")
             
             self.remove_new_node()
-            logging.info(f"Prediction completed for location: {new_location_coords}\n")
+            logging.info(f"Prediction completed for location: {new_location_coords}")
             return predicted_depth
         except Exception as e:
             logging.error(f"Error computing and predicting depth of water: {e}")
