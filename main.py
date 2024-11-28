@@ -1,8 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import requests
-import random
 import time
+import subprocess
+import os
 
 st.set_page_config(page_title="Aabar Dashboard", layout="wide")
 
@@ -13,13 +14,16 @@ st.sidebar.title("Aabar Dashboard")
 
 if st.sidebar.button("Home"):
     st.session_state["selected_tab"] = "Home"
+if st.sidebar.button("Monitor"):
+    st.session_state["selected_tab"] = "Monitor"
 if st.sidebar.button("AnzarChat"):
     st.session_state["selected_tab"] = "AnzarChat"
-if st.sidebar.button("Predictor"):
-    st.session_state["selected_tab"] = "Predictor"
-if st.sidebar.button("License"):
-    st.session_state["selected_tab"] = "License"
-
+if st.sidebar.button("Dig a new well"):
+    st.session_state["selected_tab"] = "DigWell"
+if st.sidebar.button("Edit personal info"):
+    st.session_state["selected_tab"] = "EditInfo"
+if st.sidebar.button("Logout"):
+    st.session_state["selected_tab"] = "Logout"
 selected_tab = st.session_state["selected_tab"]
 
 map_html = """
@@ -86,6 +90,7 @@ map_html = """
 """
 
 def get_coordinates():
+    """Fetch the coordinates from the server."""
     try:
         response = requests.get('http://127.0.0.1:8000/get_coordinates')
         data = response.json()
@@ -94,55 +99,77 @@ def get_coordinates():
         st.error(f"Error retrieving coordinates: {e}")
         return None, None
 
-def response_generator():
-    response = random.choice(
-        [
-            "Hello there! How can I assist you today?",
-            "Hi, human! Is there anything I can help you with?",
-            "Do you need help?",
-        ]
-    )
-    for word in response.split():
-        yield word + " "
-        time.sleep(0.05)
+def clear_coordinates():
+    """Clear coordinates on the server."""
+    try:
+        response = requests.post('http://127.0.0.1:8000/clear_coordinates')
+        if response.status_code == 200:
+            st.success("Coordinates cleared successfully.")
+    except Exception as e:
+        st.error(f"Error clearing coordinates: {e}")
 
-if selected_tab == "Home":
-    st.title("Home")
-elif selected_tab == "AnzarChat":
-    st.title("AnzarChat")
-    # Streamed response emulator
-    # Initialize chat history
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    # Display chat messages from history on app rerun
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    # Accept user input
-    if prompt := st.chat_input("What is up?"):
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        # Display user message in chat message container
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Display assistant response in chat message container
-        with st.chat_message("assistant"):
-            response = st.write_stream(response_generator())
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": response})
-elif selected_tab == "Predictor":
-    st.title("Predictor")
+def step_one():
+    """Step 1: Map Selection."""
+    st.subheader("Step 1: Select a location on the map")
     components.html(map_html, height=550, scrolling=False)
-    st.write("Click on the map to get the coordinates here.")
+    st.write("Click on the map where you want to dig a well, then click Confirm.")
 
-    if st.button("Get Coordinates from Server"):
+    if st.button("Confirm", key="s1"):
         lat, lon = get_coordinates()
         if lat is not None and lon is not None:
-            st.write(f"**Latitude:** {lat}, **Longitude:** {lon}")
+            st.session_state["digwell_step"] = 2
         else:
-            st.write("No coordinates available. Please click on the map first.")
-elif selected_tab == "License":
-    st.title("License")
+            st.error("You must confirm the location by clicking on the map.")
+
+def step_two():
+    """Step 2: Prediction Using predictor.py."""
+    st.subheader("Step 2: Run prediction for the selected well location")
+
+    # Get the coordinates (lat, lon) from the previous step
+    lat, lon = get_coordinates()
+
+    if lat and lon:
+        # Start spinner animation while the predictor is running
+        with st.spinner("Running prediction..."):
+            # Call predictor.py and pass the coordinates (lat, lon)
+            result = run_predictor(lat, lon)
+            st.success(f"Predicted Depth to Water: {result} meters")
+    else:
+        st.error("Please select a valid location first.")
+
+def run_predictor(lat, lon):
+    """Run the predictor script (predictor.py) with the given coordinates."""
+    try:
+        # Create a subprocess to run the Python script (predictor.py) with coordinates
+        command = ["python3", "predictor.py", "--lon", str(float(lon)), "--lat", str(float(lat))]
+        result = subprocess.run(command, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            # If the script ran successfully, parse the output and return the prediction
+            return result.stdout.strip()
+        else:
+            st.error(f"Error running predictor: {result.stderr}")
+            return None
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return None
+
+def run():
+    """Run the appropriate step based on selected tab."""
+    if selected_tab == "Home":
+        st.title("Welcome to the Aabar Dashboard")
+    elif selected_tab == "DigWell":
+        if "digwell_step" not in st.session_state:
+            st.session_state["digwell_step"] = 1
+        if st.session_state["digwell_step"] == 1:
+            step_one()
+        elif st.session_state["digwell_step"] == 2:
+            step_two()
+    elif selected_tab == "Logout":
+        st.session_state.clear()
+        st.write("You have logged out.")
+    else:
+        st.write(f"Selected tab: {selected_tab}")
+
+if __name__ == "__main__":
+    run()

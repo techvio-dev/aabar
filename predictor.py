@@ -8,6 +8,7 @@ import os
 import gdown
 import zipfile
 import networkx as nx
+import argparse
 
 class WellNetworkPredictor:
     """
@@ -92,6 +93,7 @@ class WellNetworkPredictor:
         try:
             if not os.path.exists(filepath):
                 logging.info(f"{filepath} not found. Attempting to download and extract ZIP file.")
+                # TODO: #1 Replace with actual download URL
                 zip_url = 'https://drive.google.com/file/d/1fUU_R3olfoXUa0-6slxH_LxYGmczvVj3/view?usp=sharing'
                 self.download_and_extract_zip(zip_url)
             logging.info(f"Loading well network from: {filepath}")
@@ -292,8 +294,14 @@ class WellNetworkPredictor:
             logging.error(f"Error computing and predicting depth of water: {e}")
             return None
 
-# Example usage
-test = WellNetworkPredictor()
-new_location_coords = (37.7749, -122.4194)
-predicted_depth = test.compute_and_predict_depth_of_water(new_location_coords)
+parser = argparse.ArgumentParser(description ='Take some input')
+parser.add_argument("--lon", type=float, required=True, help="Longitude value")
+parser.add_argument("--lat", type=float, required=True, help="Latitude value")
+args = parser.parse_args()
+    
+lon = args.lon
+lat = args.lat
+predictplz = WellNetworkPredictor()
+new_location_coords = (lat, lon)
+predicted_depth = predictplz.compute_and_predict_depth_of_water(new_location_coords)
 print(predicted_depth)

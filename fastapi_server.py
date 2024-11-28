@@ -26,6 +26,13 @@ async def set_coordinates(coords: CoordinatesModel):
     current_coordinates["lon"] = coords.lon
     return {"status": "success"}
 
+@app.post("/clear_coordinates")
+async def clear_coordinates():
+    """Clears the stored coordinates."""
+    current_coordinates["lat"] = None
+    current_coordinates["lon"] = None
+    return {"status": "cleared"}
+
 @app.get("/get_coordinates")
 async def get_coordinates():
     return current_coordinates
