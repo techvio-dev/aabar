@@ -305,3 +305,6 @@ predictplz = WellNetworkPredictor()
 new_location_coords = (lat, lon)
 predicted_depth = predictplz.compute_and_predict_depth_of_water(new_location_coords)
 print(predicted_depth)
+
+# location in USA
+# python predictor.py --lon -122.3321 --lat 47.6062
