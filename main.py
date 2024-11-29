@@ -1,35 +1,17 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import requests
-import time
 import subprocess
-import os
 import plotly.graph_objects as go
 import numpy as np
 import random
-import seaborn as sns
-import matplotlib.pyplot as plt
+import time
 
+# Set Streamlit page config
 st.set_page_config(page_title="Aabar Dashboard", layout="wide")
 
-if "selected_tab" not in st.session_state:
-    st.session_state["selected_tab"] = "Home"
-
-st.sidebar.title("Aabar Dashboard")
-
-if st.sidebar.button("Home"):
-    st.session_state["selected_tab"] = "Home"
-if st.sidebar.button("Monitor"):
-    st.session_state["selected_tab"] = "Monitor"
-if st.sidebar.button("AnzarChat"):
-    st.session_state["selected_tab"] = "AnzarChat"
-if st.sidebar.button("Dig a new well"):
-    st.session_state["selected_tab"] = "DigWell"
-if st.sidebar.button("Edit personal info"):
-    st.session_state["selected_tab"] = "EditInfo"
-if st.sidebar.button("Logout"):
-    st.session_state["selected_tab"] = "Logout"
-selected_tab = st.session_state["selected_tab"]
+# FastAPI Backend URL
+API_BASE_URL = "http://127.0.0.1:8000"
 
 map_html = """
 <!DOCTYPE html>
@@ -112,6 +94,19 @@ def clear_coordinates():
             st.success("Coordinates cleared successfully.")
     except Exception as e:
         st.error(f"Error clearing coordinates: {e}")
+
+def response_generator():
+    response = random.choice(
+        [
+            "Hello there! How can I assist you today?",
+            "Hi, human! Is there anything I can help you with?",
+            "Do you need help?",
+        ]
+    )
+    for word in response.split():
+        yield word + " "
+        time.sleep(0.05)
+
 
 def step_one():
     """Step 1: Map Selection."""
@@ -269,21 +264,75 @@ def monitor_page():
         )
         st.plotly_chart(fig, use_container_width=True)
 
-def run():
-    """Run the appropriate step based on selected tab."""
+# Utility functions for API calls
+def login_user(username, password):
+    """Authenticate the user."""
+    response = requests.post(f"{API_BASE_URL}/login", json={"username": username, "password": password})
+    return response.json()
+
+def create_account(username, password):
+    """Create a new user account."""
+    response = requests.post(f"{API_BASE_URL}/signup", json={"username": username, "password": password})
+    return response.json()
+
+# Authentication page
+def auth_page():
+    st.title("Aabar Authentication")
+
+    tab1, tab2 = st.tabs(["Login", "Sign Up"])
+
+    with tab1:
+        st.subheader("Login")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Login"):
+            if username and password:
+                result = login_user(username, password)
+                if result.get("success"):
+                    st.session_state["authenticated"] = True
+                    st.session_state["username"] = username
+                    st.rerun()
+                else:
+                    st.error(result.get("message", "Login failed"))
+            else:
+                st.warning("Please enter both username and password.")
+
+    with tab2:
+        st.subheader("Sign Up")
+        new_username = st.text_input("Username", key="signup_username")
+        new_password = st.text_input("Password", type="password", key="signup_password")
+        if st.button("Sign Up"):
+            if new_username and new_password:
+                result = create_account(new_username, new_password)
+                if result.get("success"):
+                    st.success("Account created successfully. Please log in.")
+                else:
+                    st.error(result.get("message", "Sign-up failed"))
+            else:
+                st.warning("Please enter both username and password.")
+
+# Main dashboard page
+def main_page():
+    st.sidebar.title("Aabar Dashboard")
+    tabs = ["Home", "Monitor", "AnzarChat", "Dig a new well", "Edit personal info"]
+    for tab in tabs:
+        if st.sidebar.button(tab):
+            st.session_state["selected_tab"] = tab
+
+    if st.sidebar.button("Logout"):
+        st.session_state["authenticated"] = False
+        st.session_state.clear()
+        st.rerun()
+
+    selected_tab = st.session_state.get("selected_tab", "Home")
+
     if selected_tab == "Home":
-        st.title("Welcome to the Aabar Dashboard")
-    elif selected_tab == "DigWell":
-        if "digwell_step" not in st.session_state:
-            st.session_state["digwell_step"] = 1
-        if st.session_state["digwell_step"] == 1:
-            step_one()
-        elif st.session_state["digwell_step"] == 2:
-            step_two()
+        st.title("Welcome to Aabar Dashboard")
+
     elif selected_tab == "Monitor":
         monitor_page()
+
     elif selected_tab == "AnzarChat":
-        st.title("AnzarChat")
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
@@ -297,14 +346,21 @@ def run():
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
-                response = "Hello! How can I help you today?"  # Replace with your response logic
-                st.markdown(response)
+                response = st.write_stream(response_generator())
             st.session_state.messages.append({"role": "assistant", "content": response})
-    elif selected_tab == "Logout":
-        st.session_state.clear()
-        st.write("You have logged out.")
-    else:
-        st.write(f"Selected tab: {selected_tab}")
 
-if __name__ == "__main__":
-    run()
+    elif selected_tab == "Dig a new well":
+        if "digwell_step" not in st.session_state:
+            st.session_state["digwell_step"] = 1
+        if st.session_state["digwell_step"] == 1:
+            step_one()
+        elif st.session_state["digwell_step"] == 2:
+            step_two()
+
+    elif selected_tab == "Edit personal info":
+        st.write("Edit personal info page.")
+
+if "authenticated" not in st.session_state or not st.session_state["authenticated"]:
+    auth_page()
+else:
+    main_page()
