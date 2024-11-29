@@ -1,27 +1,44 @@
 import requests
 
-# Replace with your Hugging Face API Key
-HF_API_KEY = "your_huggingface_api_key"
+import json
 
-# Set the model URL (example: GPT-J)
-model_url = "https://api-inference.huggingface.co/models/EleutherAI/gpt-j-6B"
+# Load HF API key from JSON file
+with open('apis_keys.json') as f:
+    data = json.load(f)
+token = data['huggingface']['api_key']
+url = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct"
 
-# Define headers with API Key for authentication
-headers = {
-    "Authorization": f"Bearer {HF_API_KEY}"
-}
+def llm(query):
+  parameters = {
+      "max_new_tokens": 5000,
+      "temperature": 0.01,
+      "top_k": 50,
+      "top_p": 0.95,
+      "return_full_text": False
+      }
+  
+  prompt = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>You are a helpful and smart assistant. You accurately provide answer to the provided user query.<|eot_id|><|start_header_id|>user<|end_header_id|> Here is the query: ```{query}```.
+      Provide precise and concise answer.<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
+  
+  headers = {
+      'Authorization': f'Bearer {token}',
+      'Content-Type': 'application/json'
+  }
+  
+  prompt = prompt.replace("{query}", query)
+  
+  payload = {
+      "inputs": prompt,
+      "parameters": parameters
+  }
+  
+  response = requests.post(url, headers=headers, json=payload)
+  response_text = response.json()[0]['generated_text'].strip()
 
-# Define the input prompt for the model
-data = {
-    "inputs": "What is the capital of France?"
-}
+  return response_text
 
-# Make the POST request to the Hugging Face API
-response = requests.post(model_url, json=data, headers=headers)
+response = llm("ما هي مدينة مراكش؟")
 
-# Handle the response
-if response.status_code == 200:
-    result = response.json()
-    print("Generated Text:", result[0]['generated_text'])
-else:
-    print(f"Error: {response.status_code} - {response.text}")
+# write the response to a file, using arabic encoding
+with open('response.txt', 'w', encoding='utf-8') as f:
+    f.write(response)
