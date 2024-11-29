@@ -4,6 +4,11 @@ import requests
 import time
 import subprocess
 import os
+import plotly.graph_objects as go
+import numpy as np
+import random
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Aabar Dashboard", layout="wide")
 
@@ -153,6 +158,116 @@ def run_predictor(lat, lon):
     except Exception as e:
         st.error(f"An error occurred: {e}")
         return None
+    
+def monitor_page():
+    st.title("Monitor Wells")
+
+    # Dropdown to select a well
+    well_names = ["well-1", "well-2", "well-3"]
+    selected_well = st.selectbox("Select a Well", well_names)
+
+    # Generate dummy data for each well
+    well_data = {
+        "well-1": {
+            "pH": random.uniform(6.5, 8.5),
+            "conductivity": random.uniform(100, 500),
+            "temperature": random.uniform(15, 30),
+            "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+        },
+        "well-2": {
+            "pH": random.uniform(6.5, 8.5),
+            "conductivity": random.uniform(100, 500),
+            "temperature": random.uniform(15, 30),
+            "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+        },
+        "well-3": {
+            "pH": random.uniform(6.5, 8.5),
+            "conductivity": random.uniform(100, 500),
+            "temperature": random.uniform(15, 30),
+            "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+        }
+    }
+
+    # Fetch data for the selected well
+    data = well_data[selected_well]
+
+    # Create a responsive layout
+    with st.expander("Well Metrics", expanded=True):
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.subheader("pH value")
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=data["pH"],
+                title={"text": "pH Level"},
+                gauge={
+                    'axis': {'range': [0, 14]},
+                    'bar': {'color': "green"},
+                    'steps': [
+                        # Lighter shades for each pH range to avoid overlap with green
+                        {'range': [0, 3], 'color': "lightcoral"},  # Acidic (pH 0-3) - Light Red
+                        {'range': [3, 7], 'color': "lightyellow"},  # Slightly acidic (pH 3-7) - Light Yellow
+                        {'range': [7, 10], 'color': "lightgreen"},  # Neutral to slightly basic (pH 7-10) - Light Green
+                        {'range': [10, 14], 'color': "lightblue"}  # Basic (pH 10-14) - Light Blue
+                    ]
+                }
+            ))
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            st.subheader("Conductivity")
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=data["conductivity"],
+                title={"text": "Conductivity (µS/cm)"},
+                gauge={
+                    "axis": {"range": [0, 1500]},  # Adjust the axis range if needed
+                    "bar": {"color": "green"},
+                    "steps": [
+                        {"range": [0, 500], "color": "lightgreen"},  # Safe drinking water
+                        {"range": [500, 1000], "color": "lightyellow"},  # Warning
+                        {"range": [1000, 1500], "color": "lightcoral"}  # Unsafe
+                    ]
+                }
+            ))
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col3:
+            st.subheader("Temperature")
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=data["temperature"],
+                title={"text": "Temperature (°C)"},
+                gauge={
+                    "axis": {"range": [0, 50], "tickwidth": 1, "tickcolor": "darkblue"},
+                    "bar": {"color": "red"},
+                    "steps": [
+                        {"range": [0, 20], "color": "lightblue"},
+                        {"range": [20, 30], "color": "lightgreen"},
+                        {"range": [30, 50], "color": "lightcoral"}
+                    ],
+                }
+            ))
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Evolution of water depth over time
+    with st.expander("Water Depth Over Time", expanded=True):
+        st.subheader("Water Depth Over Time")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=list(range(len(data["water_depth"]))),
+            y=data["water_depth"],
+            mode='lines+markers',
+            name="Water Depth"
+        ))
+        fig.update_layout(
+            xaxis_title="Time",
+            yaxis_title="Water Depth (m)",
+            title=f"Water Depth Evolution for {selected_well}",
+            height=400
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 def run():
     """Run the appropriate step based on selected tab."""
@@ -165,6 +280,8 @@ def run():
             step_one()
         elif st.session_state["digwell_step"] == 2:
             step_two()
+    elif selected_tab == "Monitor":
+        monitor_page()
     elif selected_tab == "AnzarChat":
         st.title("AnzarChat")
         if "messages" not in st.session_state:
