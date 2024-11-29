@@ -9,9 +9,44 @@ import time
 
 # Set Streamlit page config
 st.set_page_config(page_title="Aabar Dashboard", layout="wide")
+def get_language():
+    """Return the selected language (Arabic or English)."""
+    return st.selectbox("Select Language", ["en", "ar"])
 
+# Add the language toggle at the top of your app
+language = get_language()
 # FastAPI Backend URL
 API_BASE_URL = "http://127.0.0.1:8000"
+translations = {
+    "en": {
+        "step_1_title": "Step 1: Select a location on the map",
+        "step_1_instructions": "Click on the map where you want to dig a well, then click Confirm.",
+        "step_2_title": "Step 2: Run prediction for the selected well location",
+        "step_2_instructions": "Select a location and run the prediction.",
+        "login": "Login",
+        "signup": "Sign Up",
+        "well_monitor": "Monitor Wells",
+        "well_metrics": "Well Metrics",
+        "water_depth": "Water Depth Over Time",
+        "confirm": "Confirm",
+        "select_well": "Select a Well",
+        "logout": "Logout",
+    },
+    "ar": {
+        "step_1_title": "الخطوة 1: اختر موقعًا على الخريطة",
+        "step_1_instructions": "انقر على الخريطة حيث ترغب في حفر بئر، ثم انقر فوق تأكيد.",
+        "step_2_title": "الخطوة 2: تشغيل التنبؤ للموقع المحدد للبئر",
+        "step_2_instructions": "حدد موقعًا وقم بتشغيل التنبؤ.",
+        "login": "تسجيل الدخول",
+        "signup": "إنشاء حساب",
+        "well_monitor": "مراقبة الآبار",
+        "well_metrics": "مقاييس البئر",
+        "water_depth": "عمق المياه على مر الزمن",
+        "confirm": "تأكيد",
+        "select_well": "اختيار بئر",
+        "logout": "تسجيل الخروج",
+    },
+}
 
 map_html = """
 <!DOCTYPE html>
@@ -110,9 +145,9 @@ def response_generator():
 
 def step_one():
     """Step 1: Map Selection."""
-    st.subheader("Step 1: Select a location on the map")
+    st.subheader(translations[language]["step_1_title"])
     components.html(map_html, height=550, scrolling=False)
-    st.write("Click on the map where you want to dig a well, then click Confirm.")
+    st.write(translations[language]["step_1_instructions"])
 
     if st.button("Confirm", key="s1"):
         lat, lon = get_coordinates()
@@ -120,6 +155,7 @@ def step_one():
             st.session_state["digwell_step"] = 2
         else:
             st.error("You must confirm the location by clicking on the map.")
+        st.rerun()
 
 def step_two():
     """Step 2: Prediction Using predictor.py."""
