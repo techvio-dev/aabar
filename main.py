@@ -7,17 +7,14 @@ import numpy as np
 import random
 import time
 from chatbot import RAGPipeline
-
-# Set Streamlit page config
 st.set_page_config(page_title="Aabar Dashboard", layout="wide")
+
 def get_language():
-    """Return the selected language (Arabic or English)."""
     return st.selectbox("Select Language", ["en", "ar"])
 
-# Add the language toggle at the top of your app
 language = get_language()
-# FastAPI Backend URL
 API_BASE_URL = "http://127.0.0.1:8000"
+
 translations = {
     "en": {
         "step_1_title": "Step 1: Select a location on the map",
@@ -187,7 +184,6 @@ def get_coordinates():
         return None, None
 
 def clear_coordinates():
-    """Clear coordinates on the server."""
     try:
         response = requests.post('http://127.0.0.1:8000/clear_coordinates')
         if response.status_code == 200:
@@ -196,7 +192,6 @@ def clear_coordinates():
         st.error(translations[language]["error_clearing_coordinates"].format(e))
 
 def step_one():
-    """Step 1: Map Selection."""
     st.markdown(f"<h2 style='text-align: center;'>{translations[language]['step_1_title']}</h2>", unsafe_allow_html=True)
     components.html(map_html, height=550, scrolling=False)
     st.markdown(f"<p style='text-align: center;'>{translations[language]['step_1_instructions']}</p>", unsafe_allow_html=True)
@@ -210,32 +205,25 @@ def step_one():
         st.rerun()
 
 def step_two():
-    """Step 2: Prediction Using predictor.py."""
+    st.session_state["digwell_step"] = 1
     st.markdown(f"<h2 style='text-align: center;'>{translations[language]['step_2_title']}</h2>", unsafe_allow_html=True)
-
-    # Get the coordinates (lat, lon) from the previous step
     lat, lon = get_coordinates()
 
     if lat and lon:
-        # Start spinner animation while the predictor is running
         with st.spinner(translations[language]["running_prediction"]):
-            # Call predictor.py and pass the coordinates (lat, lon)
             result = run_predictor(lat, lon)
             st.markdown(f"<p style='text-align: center;'>{translations[language]['prediction_result']} {str(result)} meters</p>", unsafe_allow_html=True)
     else:
         st.error(translations[language]["please_select_location"])
 
 def run_predictor(lat, lon):
-    """Run the predictor script (predictor.py) with the given coordinates."""
     try:
-        # Create a subprocess to run the Python script (predictor.py) with coordinates
         command = ["python3", "predictor.py", "--lon", str(float(lon)), "--lat", str(float(lat))]
-        # # for hambam env
+        # for hambam env
         # command = ["conda", "run", "-n", "base", "python", "predictor.py", "--lon", str(float(lon)), "--lat", str(float(lat))]
         result = subprocess.run(command, capture_output=True, text=True)
         
         if result.returncode == 0:
-            # If the script ran successfully, parse the output and return the prediction
             return result.stdout.strip()
         else:
             st.error(translations[language]["error_running_predictor"] + result.stderr)
@@ -247,14 +235,12 @@ def run_predictor(lat, lon):
 def monitor_page():
     st.markdown(f"<h1 style='text-align: center;'>{translations[language]['well_monitor']}</h1>", unsafe_allow_html=True)
 
-    # Dropdown to select a well
     if language == "ar":
         well_names = ["بئر-1", "بئر-2", "بئر-3"]
     else:
         well_names = ["well-1", "well-2", "well-3"]
     selected_well = st.selectbox(translations[language]["select_well"], well_names)
 
-    # Generate dummy data for each well
     if language == "ar":
         well_data = {
             "بئر-1":  {
@@ -298,10 +284,8 @@ def monitor_page():
             }
         }
 
-    # Fetch data for the selected well
     data = well_data[selected_well]
 
-    # Create a responsive layout
     with st.expander(translations[language]["well_metrics"], expanded=True):
         col1, col2, col3 = st.columns(3)
 
@@ -315,11 +299,10 @@ def monitor_page():
                     'axis': {'range': [0, 14]},
                     'bar': {'color': "green"},
                     'steps': [
-                        # Lighter shades for each pH range to avoid overlap with green
-                        {'range': [0, 3], 'color': "lightcoral"},  # Acidic (pH 0-3) - Light Red
-                        {'range': [3, 7], 'color': "lightyellow"},  # Slightly acidic (pH 3-7) - Light Yellow
-                        {'range': [7, 10], 'color': "lightgreen"},  # Neutral to slightly basic (pH 7-10) - Light Green
-                        {'range': [10, 14], 'color': "lightblue"}  # Basic (pH 10-14) - Light Blue
+                        {'range': [0, 3], 'color': "lightcoral"},  
+                        {'range': [3, 7], 'color': "lightyellow"},  
+                        {'range': [7, 10], 'color': "lightgreen"},  
+                        {'range': [10, 14], 'color': "lightblue"}
                     ]
                 }
             ))
@@ -332,12 +315,12 @@ def monitor_page():
                 value=data["conductivity"],
                 title={"text": "Conductivity (µS/cm)"},
                 gauge={
-                    "axis": {"range": [0, 1500]},  # Adjust the axis range if needed
+                    "axis": {"range": [0, 1500]},
                     "bar": {"color": "green"},
                     "steps": [
-                        {"range": [0, 500], "color": "lightgreen"},  # Safe drinking water
-                        {"range": [500, 1000], "color": "lightyellow"},  # Warning
-                        {"range": [1000, 1500], "color": "lightcoral"}  # Unsafe
+                        {"range": [0, 500], "color": "lightgreen"},
+                        {"range": [500, 1000], "color": "lightyellow"},
+                        {"range": [1000, 1500], "color": "lightcoral"} 
                     ]
                 }
             ))
@@ -361,8 +344,6 @@ def monitor_page():
             ))
             st.plotly_chart(fig, use_container_width=True)
 
-    # Evolution of water depth over time
-    with st.expander(translations[language]["water_depth_over_time"], expanded=True):
         st.markdown(f"<h2 style='text-align: center;'>{translations[language]['water_depth_evolution']} {selected_well}</h2>", unsafe_allow_html=True)
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -379,18 +360,14 @@ def monitor_page():
         )
         st.plotly_chart(fig, use_container_width=True)
 
-# Utility functions for API calls
 def login_user(username, password):
-    """Authenticate the user."""
     response = requests.post(f"{API_BASE_URL}/login", json={"username": username, "password": password})
     return response.json()
 
-def create_account(username, password):
-    """Create a new user account."""
-    response = requests.post(f"{API_BASE_URL}/signup", json={"username": username, "password": password})
+def create_account(user_data):
+    response = requests.post(f"{API_BASE_URL}/signup", json=user_data)
     return response.json()
 
-# Authentication page
 def auth_page():
     st.markdown(f"<h1 style='text-align: center;'>{translations[language]['authentication page']}</h1>", unsafe_allow_html=True)
 
@@ -426,18 +403,35 @@ def auth_page():
         st.markdown(f"<h2 style='text-align: center;'>{translations[language]['signup']}</h2>", unsafe_allow_html=True)
         new_username = st.text_input(translations[language]["username"], key="signup_username")
         new_password = st.text_input(translations[language]["password"], type="password", key="signup_password")
+        first_name = st.text_input("First Name", key="signup_first_name")
+        last_name = st.text_input("Last Name", key="signup_last_name")
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="signup_gender")
+        nationality = st.text_input("Nationality", key="signup_nationality")
+        id_number = st.text_input("ID Number", key="signup_id_number")
+        city = st.text_input("City", key="signup_city")
+        
         if st.button(translations[language]["signup"]):
-            if new_username and new_password:
-                result = create_account(new_username, new_password)
+            if all([first_name, last_name, gender, nationality, id_number, city, new_username, new_password]):
+                user_data = {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "gender": gender,
+                    "nationality": nationality,
+                    "id_number": id_number,
+                    "city": city,
+                    "username": new_username,
+                    "password": new_password,
+                }
+                result = create_account(user_data)
                 if result.get("success"):
-                    st.success(translations[language]["account_created"])
+                    st.success("Account created successfully. Please log in.")
                 else:
                     st.error(result.get("message", "Sign-up failed"))
             else:
-                st.warning(translations[language]["please_enter_both"])
+                st.warning("Please complete all fields.")
 
-# Main dashboard page
 def main_page():
+    predicted = False
     st.sidebar.markdown(f"<h1 style='text-align: center;'>{translations[language]['Aabar Dashboard']}</h1>", unsafe_allow_html=True)
     if language == "ar":
         tabs = ["الصفحة الرئيسية", "مراقبة الآبار", "أنزار شات", "حفر بئر جديد", "تعديل المعلومات الشخصية"]
@@ -476,26 +470,22 @@ def main_page():
         if "messages" not in st.session_state:
             st.session_state.messages = [{"role": "assistant", "content": "مرحباً! أنا أنزار، ملك المياه في الأساطير الأمازيغية. سأجيب عن سؤالك استناداً إلى السياق المستخرج من القانون المغربي 36-15 المتعلق بالمياه."}]
 
-        # Display previous messages
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        # Handle the user's input
         if prompt := st.chat_input("What is up?"):
             st.session_state.messages.append({"role": "user", "content": prompt})
             
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            # Generate response from RAGPipeline
             with st.chat_message("assistant"):
                 with st.spinner(translations[language]["looking_for"]):
                     response = rag_pipeline.process_query(prompt)
-                    time.sleep(2)  # Simulate typing delay
+                    time.sleep(2)
                     st.markdown(response)
             
-            # Append the assistant's response to the session state messages
             st.session_state.messages.append({"role": "assistant", "content": response})
 
     elif selected_tab == tabs[3]:
