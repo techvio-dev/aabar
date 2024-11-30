@@ -96,7 +96,7 @@ def save_articles_to_files(articles, output_folder='laws'):
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(article)
 
-# Example usage with your provided file 'water-law-36-15.txt'
+# Example usage with 'water-law-36-15.txt'
 file_path = 'data/water-laws-36-15.txt'  # Update with the correct path to your text file
 processed_articles = read_and_preprocess_file(file_path)
 save_articles_to_files(processed_articles)
