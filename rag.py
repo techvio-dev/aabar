@@ -29,9 +29,8 @@ logger.addHandler(file_handler)
 # Initialize Pinecone with your API key
 with open('apis_keys.json') as f:
     data = json.load(f)
-api_key = data["pinecone"]["api_key"]
+pinecone_api_key = data["pinecone"]["api_key"]
 huggingface_api_key = data["huggingface"]["api_key"]
-pc = pinecone.Pinecone(api_key=api_key)
 
 class HuggingFaceEmbedding:
     def __init__(self, model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'):
@@ -77,11 +76,12 @@ class HuggingFaceEmbedding:
 class ArabicRAG:
     def __init__(self, index_name='water-laws', dimension=384):
         self.embedding_model = HuggingFaceEmbedding()
+        self.pc = pinecone.Pinecone(api_key=pinecone_api_key)
         self.index_name = index_name
         self.dimension = dimension
         
         try:
-            pc.create_index(
+            self.pc.create_index(
                 name=self.index_name, 
                 dimension=self.dimension, 
                 metric='cosine'
@@ -90,7 +90,7 @@ class ArabicRAG:
         except Exception as e:
             logger.warning(f"Index may already exist: {e}")
         
-        self.index = pc.Index(self.index_name)
+        self.index = self.pc.Index(self.index_name)
         logger.info(f"Connected to index {self.index_name}")
     
     def upsert_documents(self, documents):
