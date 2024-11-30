@@ -32,6 +32,35 @@ translations = {
         "confirm": "Confirm",
         "select_well": "Select a Well",
         "logout": "Logout",
+        "home": "Home",
+        "monitor": "Monitor Wells",
+        "anzarchat": "AnzarChat",
+        "dig_new_well": "Dig a new well",
+        "edit_info": "Edit personal info",
+        "authenticated": "Authenticated",
+        "username": "Username",
+        "password": "Password",
+        "login_failed": "Login failed",
+        "signup_failed": "Sign-up failed",
+        "please_enter_both": "Please enter both username and password.",
+        "account_created": "Account created successfully. Please log in.",
+        "select_location": "Select a location on the map to dig a well.",
+        "error_retrieving_coordinates": "Error retrieving coordinates: {e}",
+        "error_clearing_coordinates": "Error clearing coordinates: {e}",
+        "please_select_location": "Please select a valid location first.",
+        "running_prediction": "Running prediction...",
+        "prediction_result": "Predicted Depth to Water: {result} meters",
+        "water_depth_evolution": "Water Depth Evolution for {selected_well}",
+        "water_depth_over_time": "Water Depth Over Time",
+        "depth_info": "Depth to Water: {depth} meters",
+        "coords_error": "Error retrieving coordinates: {e}",
+        "coords_cleared": "Coordinates cleared successfully.",
+        "error_clearing_coordinates": "Error clearing coordinates: {e}",
+        "error_running_predictor": "An error occurred: {e}",
+        "conductivity": "Conductivity",
+        "temperature": "Temperature",
+        "authentication page": "Aabar Authentication",
+        "Aabar Dashboard": "Aabar Dashboard",
     },
     "ar": {
         "step_1_title": "الخطوة 1: اختر موقعًا على الخريطة",
@@ -46,8 +75,38 @@ translations = {
         "confirm": "تأكيد",
         "select_well": "اختيار بئر",
         "logout": "تسجيل الخروج",
+        "home": "الصفحة الرئيسية",
+        "monitor": "مراقبة الآبار",
+        "anzarchat": "أنزار شات",
+        "dig_new_well": "حفر بئر جديد",
+        "edit_info": "تعديل المعلومات الشخصية",
+        "authenticated": "تم التوثيق",
+        "username": "اسم المستخدم",
+        "password": "كلمة المرور",
+        "login_failed": "فشل تسجيل الدخول",
+        "signup_failed": "فشل التسجيل",
+        "please_enter_both": "يرجى إدخال اسم المستخدم وكلمة المرور.",
+        "account_created": "تم إنشاء الحساب بنجاح. يرجى تسجيل الدخول.",
+        "select_location": "حدد موقعًا على الخريطة لحفر بئر.",
+        "error_retrieving_coordinates": "خطأ في استرجاع الإحداثيات: {e}",
+        "error_clearing_coordinates": "خطأ في مسح الإحداثيات: {e}",
+        "please_select_location": "يرجى اختيار موقع صالح أولاً.",
+        "running_prediction": "جاري تشغيل التنبؤ...",
+        "prediction_result": "عمق المياه المتوقع: {result} متر",
+        "water_depth_evolution": "تطور عمق المياه لـ",
+        "water_depth_over_time": "عمق المياه عبر الزمن",
+        "depth_info": "عمق المياه: {depth} متر",
+        "coords_error": "خطأ في استرجاع الإحداثيات: {e}",
+        "coords_cleared": "تم مسح الإحداثيات بنجاح.",
+        "error_clearing_coordinates": "خطأ في مسح الإحداثيات: {e}",
+        "error_running_predictor": "حدث خطأ: {e}",
+        "conductivity": "الموصلية الكهربائية",
+        "temperature": "درجة الحرارة",
+        "authentication page": "ولوج أبار",
+        "Aabar Dashboard": "لوحة تحكم أبار",
     },
 }
+
 
 map_html = """
 <!DOCTYPE html>
@@ -121,7 +180,7 @@ def get_coordinates():
         data = response.json()
         return data.get('lat'), data.get('lon')
     except Exception as e:
-        st.error(f"Error retrieving coordinates: {e}")
+        st.error(translations[language]["coords_error"].format(e))
         return None, None
 
 def clear_coordinates():
@@ -129,22 +188,9 @@ def clear_coordinates():
     try:
         response = requests.post('http://127.0.0.1:8000/clear_coordinates')
         if response.status_code == 200:
-            st.success("Coordinates cleared successfully.")
+            st.success(translations[language]["coords_cleared"])
     except Exception as e:
-        st.error(f"Error clearing coordinates: {e}")
-
-def response_generator():
-    response = random.choice(
-        [
-            "Hello there! How can I assist you today?",
-            "Hi, human! Is there anything I can help you with?",
-            "Do you need help?",
-        ]
-    )
-    for word in response.split():
-        yield word + " "
-        time.sleep(0.05)
-
+        st.error(translations[language]["error_clearing_coordinates"].format(e))
 
 def step_one():
     """Step 1: Map Selection."""
@@ -162,19 +208,19 @@ def step_one():
 
 def step_two():
     """Step 2: Prediction Using predictor.py."""
-    st.subheader("Step 2: Run prediction for the selected well location")
+    st.subheader(translations[language]["step_2_title"])
 
     # Get the coordinates (lat, lon) from the previous step
     lat, lon = get_coordinates()
 
     if lat and lon:
         # Start spinner animation while the predictor is running
-        with st.spinner("Running prediction..."):
+        with st.spinner(translations[language]["running_prediction"]):
             # Call predictor.py and pass the coordinates (lat, lon)
             result = run_predictor(lat, lon)
-            st.success(f"Predicted Depth to Water: {result} meters")
+            st.success(translations[language]["prediction_result"].format(result))
     else:
-        st.error("Please select a valid location first.")
+        st.error(translations[language]["please_select_location"])
 
 def run_predictor(lat, lon):
     """Run the predictor script (predictor.py) with the given coordinates."""
@@ -187,50 +233,75 @@ def run_predictor(lat, lon):
             # If the script ran successfully, parse the output and return the prediction
             return result.stdout.strip()
         else:
-            st.error(f"Error running predictor: {result.stderr}")
+            st.error(translations[language]["error_running_predictor"].format(result.stderr))
             return None
     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        st.error(translations[language]["error_running_predictor"].format(str(e)))
         return None
     
 def monitor_page():
-    st.title("Monitor Wells")
+    st.title(translations[language]["well_monitor"])
 
     # Dropdown to select a well
-    well_names = ["well-1", "well-2", "well-3"]
-    selected_well = st.selectbox("Select a Well", well_names)
+    if language == "ar":
+        well_names = ["بئر-1", "بئر-2", "بئر-3"]
+    else:
+        well_names = ["well-1", "well-2", "well-3"]
+    selected_well = st.selectbox(translations[language]["select_well"], well_names)
 
     # Generate dummy data for each well
-    well_data = {
-        "well-1": {
-            "pH": random.uniform(6.5, 8.5),
-            "conductivity": random.uniform(100, 500),
-            "temperature": random.uniform(15, 30),
-            "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
-        },
-        "well-2": {
-            "pH": random.uniform(6.5, 8.5),
-            "conductivity": random.uniform(100, 500),
-            "temperature": random.uniform(15, 30),
-            "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
-        },
-        "well-3": {
-            "pH": random.uniform(6.5, 8.5),
-            "conductivity": random.uniform(100, 500),
-            "temperature": random.uniform(15, 30),
-            "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+    if language == "ar":
+        well_data = {
+            "بئر-1":  {
+                "pH": random.uniform(6.5, 8.5),
+                "conductivity": random.uniform(100, 500),
+                "temperature": random.uniform(15, 30),
+                "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+            },
+            "بئر-2":  {
+                "pH": random.uniform(6.5, 8.5),
+                "conductivity": random.uniform(100, 500),
+                "temperature": random.uniform(15, 30),
+                "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+            },
+            "بئر-3":  {
+                "pH": random.uniform(6.5, 8.5),
+                "conductivity": random.uniform(100, 500),
+                "temperature": random.uniform(15, 30),
+                "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+            }          
         }
-    }
+    else:
+        well_data = {
+            "well-1": {
+                "pH": random.uniform(6.5, 8.5),
+                "conductivity": random.uniform(100, 500),
+                "temperature": random.uniform(15, 30),
+                "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+            },
+            "well-2": {
+                "pH": random.uniform(6.5, 8.5),
+                "conductivity": random.uniform(100, 500),
+                "temperature": random.uniform(15, 30),
+                "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+            },
+            "well-3": {
+                "pH": random.uniform(6.5, 8.5),
+                "conductivity": random.uniform(100, 500),
+                "temperature": random.uniform(15, 30),
+                "water_depth": np.cumsum(np.random.normal(loc=-0.1, scale=0.5, size=30)).tolist()
+            }
+        }
 
     # Fetch data for the selected well
     data = well_data[selected_well]
 
     # Create a responsive layout
-    with st.expander("Well Metrics", expanded=True):
+    with st.expander(translations[language]["well_metrics"], expanded=True):
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.subheader("pH value")
+            st.subheader("pH Level")
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=data["pH"],
@@ -250,7 +321,7 @@ def monitor_page():
             st.plotly_chart(fig, use_container_width=True)
 
         with col2:
-            st.subheader("Conductivity")
+            st.subheader(translations[language]["conductivity"])
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=data["conductivity"],
@@ -268,7 +339,7 @@ def monitor_page():
             st.plotly_chart(fig, use_container_width=True)
 
         with col3:
-            st.subheader("Temperature")
+            st.subheader(translations[language]["temperature"])
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=data["temperature"],
@@ -286,8 +357,8 @@ def monitor_page():
             st.plotly_chart(fig, use_container_width=True)
 
     # Evolution of water depth over time
-    with st.expander("Water Depth Over Time", expanded=True):
-        st.subheader("Water Depth Over Time")
+    with st.expander(translations[language]["water_depth_over_time"], expanded=True):
+        st.subheader(translations[language]["water_depth_evolution"] + " " + selected_well)
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=list(range(len(data["water_depth"]))),
@@ -298,7 +369,7 @@ def monitor_page():
         fig.update_layout(
             xaxis_title="Time",
             yaxis_title="Water Depth (m)",
-            title=f"Water Depth Evolution for {selected_well}",
+            title=translations[language]["water_depth_evolution"] + " " + selected_well,
             height=400
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -316,15 +387,15 @@ def create_account(username, password):
 
 # Authentication page
 def auth_page():
-    st.title("Aabar Authentication")
+    st.title(translations[language]["authentication page"])
 
-    tab1, tab2 = st.tabs(["Login", "Sign Up"])
+    tab1, tab2 = st.tabs([translations[language]["login"], translations[language]["signup"]])
 
     with tab1:
-        st.subheader("Login")
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Login"):
+        st.subheader(translations[language]["login"])
+        username = st.text_input(translations[language]["username"], key="login_username")
+        password = st.text_input(translations[language]["password"], type="password", key="login_password")
+        if st.button(translations[language]["login"]):
             if username and password:
                 result = login_user(username, password)
                 if result.get("success"):
@@ -334,26 +405,29 @@ def auth_page():
                 else:
                     st.error(result.get("message", "Login failed"))
             else:
-                st.warning("Please enter both username and password.")
+                st.warning(translations[language]["please_enter_both"])
 
     with tab2:
-        st.subheader("Sign Up")
-        new_username = st.text_input("Username", key="signup_username")
-        new_password = st.text_input("Password", type="password", key="signup_password")
-        if st.button("Sign Up"):
+        st.subheader(translations[language]["signup"])
+        new_username = st.text_input(translations[language]["username"], key="signup_username")
+        new_password = st.text_input(translations[language]["password"], type="password", key="signup_password")
+        if st.button(translations[language]["signup"]):
             if new_username and new_password:
                 result = create_account(new_username, new_password)
                 if result.get("success"):
-                    st.success("Account created successfully. Please log in.")
+                    st.success(translations[language]["account_created"])
                 else:
                     st.error(result.get("message", "Sign-up failed"))
             else:
-                st.warning("Please enter both username and password.")
+                st.warning(translations[language]["please_enter_both"])
 
 # Main dashboard page
 def main_page():
-    st.sidebar.title("Aabar Dashboard")
-    tabs = ["Home", "Monitor", "AnzarChat", "Dig a new well", "Edit personal info"]
+    st.sidebar.title(translations[language]["Aabar Dashboard"])
+    if language == "ar":
+        tabs = ["الصفحة الرئيسية", "مراقبة الآبار", "أنزار شات", "حفر بئر جديد", "تعديل المعلومات الشخصية"]
+    else:
+        tabs = ["Home", "Monitor", "AnzarChat", "Dig a new well", "Edit personal info"]
     for tab in tabs:
         if st.sidebar.button(tab):
             st.session_state["selected_tab"] = tab
@@ -363,15 +437,15 @@ def main_page():
         st.session_state.clear()
         st.rerun()
 
-    selected_tab = st.session_state.get("selected_tab", "Home")
+    selected_tab = st.session_state.get("selected_tab", tabs[0])
 
-    if selected_tab == "Home":
-        st.title("Welcome to Aabar Dashboard")
+    if selected_tab == tabs[0]:
+        st.title(translations[language]["home"])
 
-    elif selected_tab == "Monitor":
+    elif selected_tab == tabs[1]:
         monitor_page()
 
-    elif selected_tab == "AnzarChat":
+    elif selected_tab == tabs[2]:
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
@@ -396,7 +470,7 @@ def main_page():
             # Append the assistant's response to the session state messages
             st.session_state.messages.append({"role": "assistant", "content": response})
 
-    elif selected_tab == "Dig a new well":
+    elif selected_tab == tabs[3]:
         if "digwell_step" not in st.session_state:
             st.session_state["digwell_step"] = 1
         if st.session_state["digwell_step"] == 1:
@@ -404,8 +478,8 @@ def main_page():
         elif st.session_state["digwell_step"] == 2:
             step_two()
 
-    elif selected_tab == "Edit personal info":
-        st.write("Edit personal info page.")
+    elif selected_tab == tabs[4]:
+        st.write(translations[language]["edit_info"])
 
 if "authenticated" not in st.session_state or not st.session_state["authenticated"]:
     auth_page()

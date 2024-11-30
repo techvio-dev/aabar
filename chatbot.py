@@ -16,13 +16,13 @@ class AnzarAssistant:
 
     def generate_response(self, query: str, context: str) -> str:
         logging.info("Generating response for query: %s", query)
-        prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>أنت أنزار، ملك المياه في الأساطير الأمازيغية، ومساعد ذكي للغاية. أنت تقدم إجابات دقيقة ومفيدة لأسئلة المستخدمين استنادًا إلى السياق المستخرج من القانون المغربي 36-15 المتعلق بالمياه. أنت دائمًا تجيب باللغة العربية. إليك السياق ذي الصلة الذي لديك لاستفسار المستخدم        :
+        prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>أنت أنزار، ملك المياه في الأساطير الأمازيغية، ومساعد ذكي للغاية. أنت تقدم إجابات دقيقة ومفيدة لأسئلة المستخدمين استنادًا إلى السياق المستخرج من القانون المغربي 36-15 المتعلق بالمياه. أنت دائمًا تجيب باللغة العربية فقط. إليك السياق ذي الصلة الذي لديك لاستفسار المستخدم        :
         {context}السؤال:
-        {query}الإجابة:
+        {query} الإجابة باللغة العربية:
         <|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
 
         parameters = {
-            "max_new_tokens": 5000,
+            "max_new_tokens": 4096,
             "temperature": 0.01,
             "top_k": 50,
             "top_p": 0.95,
@@ -40,6 +40,7 @@ class AnzarAssistant:
         }
 
         try:
+            print(prompt)
             response = requests.post(self.model_url, headers=headers, json=payload)
             response.raise_for_status()
             response_text = response.json()[0]['generated_text'].strip()
@@ -66,7 +67,7 @@ class RAGPipeline:
 
     def process_query(self, query):
         logging.info("Processing query: %s", query)
-        contexts = self.rag.retrieve_relevant_context(query, top_k=4)
+        contexts = self.rag.retrieve_relevant_context(query, top_k=3)
         
         if not contexts:
             logging.warning("No relevant information found for query: %s", query)
