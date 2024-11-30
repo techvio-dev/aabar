@@ -56,7 +56,7 @@ def signup(user: UserCreate, db: SessionLocal = Depends(get_db)):
     if db.query(User).filter(User.username == user.username).first():
         raise HTTPException(status_code=400, detail="User already exists")
     
-        new_user = User(
+    new_user = User(
         username=user.username,
         hashed_password=hash_password(user.password),
         first_name=user.first_name,
@@ -71,6 +71,7 @@ def signup(user: UserCreate, db: SessionLocal = Depends(get_db)):
     db.refresh(new_user)
     return {"success": True, "message": "Account created successfully"}
 
+# Login endpoint
 @app.post("/login")
 def login(user: UserLogin, db: SessionLocal = Depends(get_db)):
     # Find the user in the database
@@ -79,10 +80,12 @@ def login(user: UserLogin, db: SessionLocal = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {"success": True, "message": "Login successful"}
 
+# Coordinates model and endpoints
 class CoordinatesModel(BaseModel):
     lat: float
     lon: float
 
+# Global variable to store coordinates
 current_coordinates = {"lat": None, "lon": None}
 
 @app.post("/set_coordinates")
