@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import numpy as np
 import random
 import time
+from chatbot import RAGPipeline
 
 # Set Streamlit page config
 st.set_page_config(page_title="Aabar Dashboard", layout="wide")
@@ -110,6 +111,8 @@ map_html = """
 </body>
 </html>
 """
+
+rag_pipeline = RAGPipeline()
 
 def get_coordinates():
     """Fetch the coordinates from the server."""
@@ -372,17 +375,25 @@ def main_page():
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
+        # Display previous messages
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
+        # Handle the user's input
         if prompt := st.chat_input("What is up?"):
             st.session_state.messages.append({"role": "user", "content": prompt})
+            
             with st.chat_message("user"):
                 st.markdown(prompt)
 
+            # Generate response from RAGPipeline
             with st.chat_message("assistant"):
-                response = st.write_stream(response_generator())
+                # Use the RAGPipeline to process the query and get the response
+                response = rag_pipeline.process_query(prompt)
+                st.markdown(response)
+            
+            # Append the assistant's response to the session state messages
             st.session_state.messages.append({"role": "assistant", "content": response})
 
     elif selected_tab == "Dig a new well":

@@ -7,7 +7,6 @@ import logging
 import os
 import gdown
 import zipfile
-import networkx as nx
 import argparse
 
 class WellNetworkPredictor:
@@ -93,7 +92,6 @@ class WellNetworkPredictor:
         try:
             if not os.path.exists(filepath):
                 logging.info(f"{filepath} not found. Attempting to download and extract ZIP file.")
-                # TODO: #1 Replace with actual download URL
                 zip_url = 'https://drive.google.com/file/d/1fUU_R3olfoXUa0-6slxH_LxYGmczvVj3/view?usp=sharing'
                 self.download_and_extract_zip(zip_url)
             logging.info(f"Loading well network from: {filepath}")
@@ -306,5 +304,5 @@ new_location_coords = (lat, lon)
 predicted_depth = predictplz.compute_and_predict_depth_of_water(new_location_coords)
 print(predicted_depth)
 
-# location in USA
+# # location in USA
 # python predictor.py --lon -122.3321 --lat 47.6062
