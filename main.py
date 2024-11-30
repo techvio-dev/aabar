@@ -61,6 +61,7 @@ translations = {
         "temperature": "Temperature",
         "authentication page": "Aabar Authentication",
         "Aabar Dashboard": "Aabar Dashboard",
+        "looking_for": "Just a minute while I review my notes...",
     },
     "ar": {
         "step_1_title": "الخطوة 1: اختر موقعًا على الخريطة",
@@ -104,6 +105,7 @@ translations = {
         "temperature": "درجة الحرارة",
         "authentication page": "ولوج أبار",
         "Aabar Dashboard": "لوحة تحكم أبار",
+        "looking_for": "أمهلني دقيقة لأراجع معلوماتي...",
     },
 }
 
@@ -472,7 +474,7 @@ def main_page():
 
     elif selected_tab == tabs[2]:        
         if "messages" not in st.session_state:
-            st.session_state.messages = []
+            st.session_state.messages = [{"role": "assistant", "content": "مرحباً! أنا أنزار، ملك المياه في الأساطير الأمازيغية. سأجيب عن سؤالك استناداً إلى السياق المستخرج من القانون المغربي 36-15 المتعلق بالمياه."}]
 
         # Display previous messages
         for message in st.session_state.messages:
@@ -488,9 +490,10 @@ def main_page():
 
             # Generate response from RAGPipeline
             with st.chat_message("assistant"):
-                # Use the RAGPipeline to process the query and get the response
-                response = rag_pipeline.process_query(prompt)
-                st.markdown(response)
+                with st.spinner(translations[language]["looking_for"]):
+                    response = rag_pipeline.process_query(prompt)
+                    time.sleep(2)  # Simulate typing delay
+                    st.markdown(response)
             
             # Append the assistant's response to the session state messages
             st.session_state.messages.append({"role": "assistant", "content": response})
