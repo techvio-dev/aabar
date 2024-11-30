@@ -40,7 +40,6 @@ class AnzarAssistant:
         }
 
         try:
-            print(prompt)
             response = requests.post(self.model_url, headers=headers, json=payload)
             response.raise_for_status()
             response_text = response.json()[0]['generated_text'].strip()

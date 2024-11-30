@@ -272,6 +272,11 @@ class WellNetworkPredictor:
             return None
     
     def compute_and_predict_depth_of_water(self, new_location_coords, threshold_km=5):
+        # shift to fit Morocco's coordinates inside USA's bounding box since the model was trained on USA data
+        # ONLY FOR TESTING PURPOSES
+        new_location_coords = list(new_location_coords)
+        new_location_coords[0] += 2.5
+        new_location_coords[1] -= 80.0
         try:
             logging.info(f"Starting prediction for location: {new_location_coords} with threshold: {threshold_km} km")
             

@@ -45,18 +45,18 @@ translations = {
         "please_enter_both": "Please enter both username and password.",
         "account_created": "Account created successfully. Please log in.",
         "select_location": "Select a location on the map to dig a well.",
-        "error_retrieving_coordinates": "Error retrieving coordinates: {e}",
-        "error_clearing_coordinates": "Error clearing coordinates: {e}",
+        "error_retrieving_coordinates": "Error retrieving coordinates: ",
+        "error_clearing_coordinates": "Error clearing coordinates: ",
         "please_select_location": "Please select a valid location first.",
         "running_prediction": "Running prediction...",
-        "prediction_result": "Predicted Depth to Water: {result} meters",
-        "water_depth_evolution": "Water Depth Evolution for {selected_well}",
+        "prediction_result": "Predicted Depth to Water: ",
+        "water_depth_evolution": "Water Depth Evolution for ",
         "water_depth_over_time": "Water Depth Over Time",
-        "depth_info": "Depth to Water: {depth} meters",
-        "coords_error": "Error retrieving coordinates: {e}",
+        "depth_info": "Depth to Water: ",
+        "coords_error": "Error retrieving coordinates: ",
         "coords_cleared": "Coordinates cleared successfully.",
-        "error_clearing_coordinates": "Error clearing coordinates: {e}",
-        "error_running_predictor": "An error occurred: {e}",
+        "error_clearing_coordinates": "Error clearing coordinates: ",
+        "error_running_predictor": "An error occurred: ",
         "conductivity": "Conductivity",
         "temperature": "Temperature",
         "authentication page": "Aabar Authentication",
@@ -88,18 +88,18 @@ translations = {
         "please_enter_both": "يرجى إدخال اسم المستخدم وكلمة المرور.",
         "account_created": "تم إنشاء الحساب بنجاح. يرجى تسجيل الدخول.",
         "select_location": "حدد موقعًا على الخريطة لحفر بئر.",
-        "error_retrieving_coordinates": "خطأ في استرجاع الإحداثيات: {e}",
-        "error_clearing_coordinates": "خطأ في مسح الإحداثيات: {e}",
+        "error_retrieving_coordinates": "خطأ في استرجاع الإحداثيات: ",
+        "error_clearing_coordinates": "خطأ في مسح الإحداثيات: ",
         "please_select_location": "يرجى اختيار موقع صالح أولاً.",
         "running_prediction": "جاري تشغيل التنبؤ...",
-        "prediction_result": "عمق المياه المتوقع: {result} متر",
+        "prediction_result": "عمق المياه المتوقع:",
         "water_depth_evolution": "تطور عمق المياه لـ",
         "water_depth_over_time": "عمق المياه عبر الزمن",
-        "depth_info": "عمق المياه: {depth} متر",
-        "coords_error": "خطأ في استرجاع الإحداثيات: {e}",
+        "depth_info": "عمق المياه: ",
+        "coords_error": "خطأ في استرجاع الإحداثيات: ",
         "coords_cleared": "تم مسح الإحداثيات بنجاح.",
-        "error_clearing_coordinates": "خطأ في مسح الإحداثيات: {e}",
-        "error_running_predictor": "حدث خطأ: {e}",
+        "error_clearing_coordinates": "خطأ في مسح الإحداثيات: ",
+        "error_running_predictor": "حدث خطأ: ",
         "conductivity": "الموصلية الكهربائية",
         "temperature": "درجة الحرارة",
         "authentication page": "ولوج أبار",
@@ -129,8 +129,8 @@ map_html = """
                 })
             ],
             view: new ol.View({
-                center: ol.proj.fromLonLat([0, 0]),
-                zoom: 2
+                center: ol.proj.fromLonLat([-7.0926, 29]),  // Centered on Morocco
+                zoom: 5  // Adjust the zoom level to suit your preference (between 0-22)
             })
         });
 
@@ -147,7 +147,7 @@ map_html = """
 
             marker = new ol.layer.Vector({
                 source: new ol.source.Vector({
-                    features: [new ol.Feature(new ol.geom.Point(e.coordinate))]
+                    features: [new ol.Feature(new ol.geom.Point(e.coordinate))] 
                 }),
                 style: new ol.style.Style({
                     image: new ol.style.Icon({
@@ -169,6 +169,7 @@ map_html = """
     </script>
 </body>
 </html>
+
 """
 
 rag_pipeline = RAGPipeline()
@@ -194,9 +195,9 @@ def clear_coordinates():
 
 def step_one():
     """Step 1: Map Selection."""
-    st.subheader(translations[language]["step_1_title"])
+    st.markdown(f"<h2 style='text-align: center;'>{translations[language]['step_1_title']}</h2>", unsafe_allow_html=True)
     components.html(map_html, height=550, scrolling=False)
-    st.write(translations[language]["step_1_instructions"])
+    st.markdown(f"<p style='text-align: center;'>{translations[language]['step_1_instructions']}</p>", unsafe_allow_html=True)
 
     if st.button("Confirm", key="s1"):
         lat, lon = get_coordinates()
@@ -208,7 +209,7 @@ def step_one():
 
 def step_two():
     """Step 2: Prediction Using predictor.py."""
-    st.subheader(translations[language]["step_2_title"])
+    st.markdown(f"<h2 style='text-align: center;'>{translations[language]['step_2_title']}</h2>", unsafe_allow_html=True)
 
     # Get the coordinates (lat, lon) from the previous step
     lat, lon = get_coordinates()
@@ -218,7 +219,7 @@ def step_two():
         with st.spinner(translations[language]["running_prediction"]):
             # Call predictor.py and pass the coordinates (lat, lon)
             result = run_predictor(lat, lon)
-            st.success(translations[language]["prediction_result"].format(result))
+            st.markdown(f"<p style='text-align: center;'>{translations[language]['prediction_result']} {str(result)} meters</p>", unsafe_allow_html=True)
     else:
         st.error(translations[language]["please_select_location"])
 
@@ -227,20 +228,22 @@ def run_predictor(lat, lon):
     try:
         # Create a subprocess to run the Python script (predictor.py) with coordinates
         command = ["python3", "predictor.py", "--lon", str(float(lon)), "--lat", str(float(lat))]
+        # # for hambam env
+        # command = ["conda", "run", "-n", "base", "python", "predictor.py", "--lon", str(float(lon)), "--lat", str(float(lat))]
         result = subprocess.run(command, capture_output=True, text=True)
         
         if result.returncode == 0:
             # If the script ran successfully, parse the output and return the prediction
             return result.stdout.strip()
         else:
-            st.error(translations[language]["error_running_predictor"].format(result.stderr))
+            st.error(translations[language]["error_running_predictor"] + result.stderr)
             return None
     except Exception as e:
-        st.error(translations[language]["error_running_predictor"].format(str(e)))
+        st.error(translations[language]["error_running_predictor"] + str(e))
         return None
     
 def monitor_page():
-    st.title(translations[language]["well_monitor"])
+    st.markdown(f"<h1 style='text-align: center;'>{translations[language]['well_monitor']}</h1>", unsafe_allow_html=True)
 
     # Dropdown to select a well
     if language == "ar":
@@ -301,7 +304,7 @@ def monitor_page():
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.subheader("pH Level")
+            st.markdown(f"<h2 style='text-align: center;'>pH Level</h2>", unsafe_allow_html=True)
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=data["pH"],
@@ -321,7 +324,7 @@ def monitor_page():
             st.plotly_chart(fig, use_container_width=True)
 
         with col2:
-            st.subheader(translations[language]["conductivity"])
+            st.markdown(f"<h2 style='text-align: center;'>{translations[language]['conductivity']}</h2>", unsafe_allow_html=True)
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=data["conductivity"],
@@ -339,7 +342,7 @@ def monitor_page():
             st.plotly_chart(fig, use_container_width=True)
 
         with col3:
-            st.subheader(translations[language]["temperature"])
+            st.markdown(f"<h2 style='text-align: center;'>{translations[language]['temperature']}</h2>", unsafe_allow_html=True)
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=data["temperature"],
@@ -358,7 +361,7 @@ def monitor_page():
 
     # Evolution of water depth over time
     with st.expander(translations[language]["water_depth_over_time"], expanded=True):
-        st.subheader(translations[language]["water_depth_evolution"] + " " + selected_well)
+        st.markdown(f"<h2 style='text-align: center;'>{translations[language]['water_depth_evolution']} {selected_well}</h2>", unsafe_allow_html=True)
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=list(range(len(data["water_depth"]))),
@@ -387,12 +390,22 @@ def create_account(username, password):
 
 # Authentication page
 def auth_page():
-    st.title(translations[language]["authentication page"])
+    st.markdown(f"<h1 style='text-align: center;'>{translations[language]['authentication page']}</h1>", unsafe_allow_html=True)
 
     tab1, tab2 = st.tabs([translations[language]["login"], translations[language]["signup"]])
+    st.markdown(
+        """
+        <style>
+        .stTabs [role="tablist"] button {
+            flex: 1;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
     with tab1:
-        st.subheader(translations[language]["login"])
+        st.markdown(f"<h2 style='text-align: center;'>{translations[language]['login']}</h2>", unsafe_allow_html=True)
         username = st.text_input(translations[language]["username"], key="login_username")
         password = st.text_input(translations[language]["password"], type="password", key="login_password")
         if st.button(translations[language]["login"]):
@@ -408,7 +421,7 @@ def auth_page():
                 st.warning(translations[language]["please_enter_both"])
 
     with tab2:
-        st.subheader(translations[language]["signup"])
+        st.markdown(f"<h2 style='text-align: center;'>{translations[language]['signup']}</h2>", unsafe_allow_html=True)
         new_username = st.text_input(translations[language]["username"], key="signup_username")
         new_password = st.text_input(translations[language]["password"], type="password", key="signup_password")
         if st.button(translations[language]["signup"]):
@@ -423,29 +436,41 @@ def auth_page():
 
 # Main dashboard page
 def main_page():
-    st.sidebar.title(translations[language]["Aabar Dashboard"])
+    st.sidebar.markdown(f"<h1 style='text-align: center;'>{translations[language]['Aabar Dashboard']}</h1>", unsafe_allow_html=True)
     if language == "ar":
         tabs = ["الصفحة الرئيسية", "مراقبة الآبار", "أنزار شات", "حفر بئر جديد", "تعديل المعلومات الشخصية"]
     else:
         tabs = ["Home", "Monitor", "AnzarChat", "Dig a new well", "Edit personal info"]
     for tab in tabs:
-        if st.sidebar.button(tab):
+        if st.sidebar.button(tab, use_container_width=True):
             st.session_state["selected_tab"] = tab
 
-    if st.sidebar.button("Logout"):
+    if st.sidebar.button(translations[language]["logout"], use_container_width=True, key="logout_button", help="Logout", on_click=lambda: st.session_state.clear(), args=(), kwargs={}):
         st.session_state["authenticated"] = False
-        st.session_state.clear()
         st.rerun()
+
+    st.sidebar.markdown(
+        """
+        <style>
+        div.stButton > button#logout_button {
+            background-color: red;
+            color: white;
+            width: 100%;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
     selected_tab = st.session_state.get("selected_tab", tabs[0])
 
     if selected_tab == tabs[0]:
-        st.title(translations[language]["home"])
+        st.markdown(f"<h1 style='text-align: center;'>{translations[language]['home']}</h1>", unsafe_allow_html=True)
 
     elif selected_tab == tabs[1]:
         monitor_page()
 
-    elif selected_tab == tabs[2]:
+    elif selected_tab == tabs[2]:        
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
