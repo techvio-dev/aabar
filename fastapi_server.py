@@ -9,10 +9,8 @@ import jwt
 import hashlib
 import datetime
 
-# FastAPI Application
 app = FastAPI()
 
-# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,28 +18,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# JWT Configuration
 SECRET_KEY = "PLEASEDONOTTROWSAUSAGEPIZZAAWAY"
 ALGORITHM = "HS256"
 security = HTTPBearer()
 
-# Database URLs
 DATABASE_URL_USERS = "sqlite:///./users.db"
 DATABASE_URL_WELLS = "sqlite:///./wells.db"
 
-# Database Engines
 engine_users = create_engine(DATABASE_URL_USERS, connect_args={"check_same_thread": False})
 engine_wells = create_engine(DATABASE_URL_WELLS, connect_args={"check_same_thread": False})
 
-# Session Makers
 SessionLocalUsers = sessionmaker(autocommit=False, autoflush=False, bind=engine_users)
 SessionLocalWells = sessionmaker(autocommit=False, autoflush=False, bind=engine_wells)
 
-# Base Classes
 BaseUsers = declarative_base()
 BaseWells = declarative_base()
 
-# User Table
 class User(BaseUsers):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -54,7 +46,6 @@ class User(BaseUsers):
     id_number = Column(String, nullable=False)
     city = Column(String, nullable=False)
 
-# Well Table
 class Well(BaseWells):
     __tablename__ = "wells"
     id = Column(Integer, primary_key=True, index=True)
@@ -69,13 +60,11 @@ class Well(BaseWells):
     lat = Column(Float, nullable=False)
     licensed = Column(Boolean, default=False)
     license_code = Column(String, nullable=True)
-    predicted_depth = Column(Float, nullable=False)  # New field for predicted depth
+    predicted_depth = Column(Float, nullable=False)
 
-# Create Tables
 BaseUsers.metadata.create_all(bind=engine_users)
 BaseWells.metadata.create_all(bind=engine_wells)
 
-# Utility Functions
 def get_db_users():
     db = SessionLocalUsers()
     try:
@@ -109,7 +98,6 @@ def decode_jwt_token(token: str) -> str:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# Models
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -131,12 +119,10 @@ class CoordinatesModel(BaseModel):
 class LicenseWellRequest(BaseModel):
     lat: float
     lon: float
-    predicted_depth: float  # Added predicted depth to the request model
+    predicted_depth: float
 
-# Global Variable for Coordinates
 current_coordinates = {"lat": None, "lon": None}
 
-# Endpoints
 @app.post("/signup")
 def signup(user: UserCreate, db: SessionLocalUsers = Depends(get_db_users)):
     if db.query(User).filter(User.username == user.username).first():
@@ -178,24 +164,20 @@ async def get_coordinates():
 
 @app.post("/license_well")
 def license_well(
-    request: LicenseWellRequest,  # Use the new request model with predicted depth
+    request: LicenseWellRequest,
     credentials: HTTPAuthorizationCredentials = Security(security),
     db_users: SessionLocalUsers = Depends(get_db_users),
     db_wells: SessionLocalWells = Depends(get_db_wells)
 ):
-    # Get logged-in username from JWT
     username = decode_jwt_token(credentials.credentials)
 
-    # Fetch user details
     user = db_users.query(User).filter(User.username == username).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Ensure coordinates are set
     if request.lat is None or request.lon is None:
         raise HTTPException(status_code=400, detail="Coordinates not set")
     
-    # Add new well to the database with the predicted depth
     new_well = Well(
         username=user.username,
         first_name=user.first_name,
@@ -208,9 +190,26 @@ def license_well(
         lat=request.lat,
         licensed=False,
         license_code=None,
-        predicted_depth=request.predicted_depth  # Store predicted depth
+        predicted_depth=request.predicted_depth
     )
     db_wells.add(new_well)
     db_wells.commit()
     db_wells.refresh(new_well)
     return {"success": True, "message": "Well licensed", "well_id": new_well.id}
+@app.get("/wells/{username}")
+def get_wells_by_user(username: str, db: SessionLocalWells = Depends(get_db_wells)):
+    wells = db.query(Well).filter(Well.username == username).all()
+    if not wells:
+        raise HTTPException(status_code=404, detail="No wells found for this user")
+    return wells
+
+# Helper function to convert Well model to dictionary format for JSON response
+def well_to_dict(well: Well):
+    return {
+        "id": well.id,
+        "lat": well.lat,
+        "lon": well.lon,
+        "predicted_depth": well.predicted_depth,
+        "licensed": well.licensed,
+        "license_code": well.license_code,
+    }

@@ -110,63 +110,84 @@ translations = {
 map_html = """
 <!DOCTYPE html>
 <html>
-<head>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.2.1/ol.css" />
-    <script src="https://cdn.jsdelivr.net/npm/ol@v10.2.1/dist/ol.js"></script>
+  <head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.1.0/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.1.0/dist/ol.js"></script>
+    <script src="https://unpkg.com/ol-mapbox-style@12.1.1/dist/olms.js"></script>
     <style>
-        #map { height: 500px; }
+      #map { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
     </style>
-</head>
-<body>
-    <div id="map"></div>
+  </head>
+  <body>
+    <div id="map">
+    </div>
     <script>
-        var map = new ol.Map({
-            target: 'map',
-            layers: [
-                new ol.layer.Tile({
-                    source: new ol.source.OSM()
-                })
-            ],
-            view: new ol.View({
-                center: ol.proj.fromLonLat([-7.0926, 29]),  // Centered on Morocco
-                zoom: 5  // Adjust the zoom level to suit your preference (between 0-22)
-            })
+      const key = 'IFASARDK187wYyZM6CW5';
+      const styleJson = `https://api.maptiler.com/maps/dc73a1b5-4d79-4cb0-a741-9aaf5e474dd5/style.json?key=${key}`;
+
+      const attribution = new ol.control.Attribution({
+        collapsible: false,
+      });
+
+      const map = new ol.Map({
+        target: 'map',
+        controls: ol.control.defaults.defaults({ attribution: false }).extend([attribution]),
+        view: new ol.View({
+          constrainResolution: true,
+          center: ol.proj.fromLonLat([-7.0926, 29]),
+          zoom: 5,
+        }),
+      });
+
+      olms.apply(map, styleJson);
+
+      let markerLayer = null;
+
+      map.on('click', function (event) {
+        const coords = ol.proj.toLonLat(event.coordinate);
+        const lat = coords[1];
+        const lon = coords[0];
+
+        if (markerLayer) {
+          map.removeLayer(markerLayer);
+        }
+
+        const marker = new ol.Feature({
+          geometry: new ol.geom.Point(event.coordinate),
         });
 
-        var marker = null;
+        markerLayer = new ol.layer.Vector({
+          source: new ol.source.Vector({
+            features: [marker],
+          }),
+          style: new ol.style.Style({
+            image: new ol.style.Icon({
+              src: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+              scale: 0.05,
+            }),
+          }),
+        });
 
-        map.on('click', function(e) {
-            var coords = ol.proj.toLonLat(e.coordinate);
-            var lat = coords[1];
-            var lon = coords[0];
+        map.addLayer(markerLayer);
 
-            if (marker) {
-                map.removeLayer(marker);
+        fetch('http://127.0.0.1:8000/set_coordinates', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ lat, lon }),
+        })
+          .then((response) => {
+            if (response.ok) {
+              console.log('Coordinates sent successfully!');
+            } else {
+              console.error('Failed to send coordinates.');
             }
-
-            marker = new ol.layer.Vector({
-                source: new ol.source.Vector({
-                    features: [new ol.Feature(new ol.geom.Point(e.coordinate))] 
-                }),
-                style: new ol.style.Style({
-                    image: new ol.style.Icon({
-                        src: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-                        scale: 0.05
-                    })
-                })
-            });
-            map.addLayer(marker);
-
-            fetch('http://127.0.0.1:8000/set_coordinates', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({lat: lat, lon: lon})
-            });
-        });
+          })
+          .catch((error) => console.error('Error:', error));
+      });
     </script>
-</body>
+  </body>
 </html>
 
 """
@@ -213,7 +234,7 @@ def step_two():
 
     if lat and lon:
         with st.spinner("Processing..."):
-            result = run_predictor(lat, lon)  # Assuming this function returns the predicted depth
+            result = run_predictor(lat, lon)
             if result:
                 st.markdown(f"<p style='text-align: center;'>{translations[language]['prediction_result']} {str(result)} meters</p>", unsafe_allow_html=True)
                 
@@ -223,7 +244,7 @@ def step_two():
                         data = {
                             "lat": lat,
                             "lon": lon,
-                            "predicted_depth": result  # Add the predicted depth here
+                            "predicted_depth": result
                         }
                         response = requests.post(
                             f"{API_BASE_URL}/license_well", 
@@ -239,7 +260,6 @@ def step_two():
                             st.error(response.json().get("detail", "Error licensing the well"))
                 with col2:
                     if st.button("cancel"):
-                        # Reset or go back to step 1 if needed
                         st.session_state["digwell_step"] = 1
                         st.rerun()
     else:
@@ -462,13 +482,63 @@ def auth_page():
             else:
                 st.warning("Please complete all fields.")
 
+# Fetch wells data from the backend API
+def fetch_wells_data(username: str):
+    response = requests.get(f"{API_BASE_URL}/wells/{username}")
+    if response.status_code == 200:
+        return response.json()  # Returns a list of wells
+    else:
+        print("Failed to fetch wells data from the backend.")
+        return None
+
+# Custom CSS for styling
+st.markdown("""
+    <style>
+        .well-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            padding: 10px;
+            background-color: #2C3E50;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .well-info {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .status-licensed {
+            color: green;
+            font-weight: bold;
+        }
+        .status-pending {
+            color: orange;
+            font-weight: bold;
+        }
+        .well-box {
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .well-licensed {
+            border: 2px solid green;
+        }
+        .well-pending {
+            border: 2px solid orange;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Main page function
 def main_page():
-    predicted = False
     st.sidebar.markdown(f"<h1 style='text-align: center;'>{translations[language]['Aabar Dashboard']}</h1>", unsafe_allow_html=True)
+    
     if language == "ar":
         tabs = ["الصفحة الرئيسية", "مراقبة الآبار", "أنزار شات", "حفر بئر جديد", "تعديل المعلومات الشخصية"]
     else:
         tabs = ["Home", "Monitor", "AnzarChat", "Dig a new well", "Edit personal info"]
+    
     for tab in tabs:
         if st.sidebar.button(tab, use_container_width=True):
             st.session_state["selected_tab"] = tab
@@ -477,25 +547,64 @@ def main_page():
         st.session_state["authenticated"] = False
         st.rerun()
 
-    st.sidebar.markdown(
-        """
-        <style>
-        div.stButton > button#logout_button {
-            background-color: red;
-            color: white;
-            width: 100%;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
     selected_tab = st.session_state.get("selected_tab", tabs[0])
     if selected_tab != tabs[3]:
         st.session_state["digwell_step"] = 1
+
     if selected_tab == tabs[0]:
         st.markdown(f"<h1 style='text-align: center;'>{translations[language]['home']}</h1>", unsafe_allow_html=True)
+        
+        # Fetch and display the wells data
+        if "auth_token" in st.session_state:
+            username = st.session_state["username"]
+            wells_data = fetch_wells_data(username)
 
+            if wells_data:
+                # Split wells into licensed and pending
+                licensed_wells = [well for well in wells_data if well['licensed'] is True]
+                pending_wells = [well for well in wells_data if well['licensed'] is False]
+
+                # Create columns for licensed and pending wells
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.header("Licensed Wells")
+                    if not licensed_wells:
+                        st.write("No licensed wells available. Please wait for licensing to be finished.")
+                    else:
+                        for well in licensed_wells:
+                            well_name = f"Well N{well['id']}"
+                            well_class = 'well-licensed'
+                            st.markdown(f'<div class="well-title">{well_name}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">**Longitude:** {well["lon"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">**Latitude:** {well["lat"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">**Predicted Depth:** {well["predicted_depth"]} meters</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">**License Code:** {well.get("license_code", "Not available")}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info status-licensed">**Status:** Licensed</div>', unsafe_allow_html=True)
+
+                with col2:
+                    st.header("Pending Wells")
+                    if not pending_wells:
+                        st.write("No pending wells available. You can dig a new well or chat with Anzar.")
+                    else:
+                        for well in pending_wells:
+                            well_name = f"Well N{well['id']}"
+                            st.markdown(f'<div class="well-title">{well_name}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info"><strong>Longitude:</strong> {well["lon"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info"><strong>Latitude:<strong> {well["lat"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info"><strong>Predicted Depth:<strong> {well["predicted_depth"]} meters</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info"><strong>License Code:<strong> {well.get("license_code", "Not available")}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info status-pending"><strong>Status:<strong> Pending</div>', unsafe_allow_html=True)
+
+            else:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.header("Licensed Wells")
+                    st.write("No licensed wells available. Please wait for licensing to be finished.")
+                with col2:
+                    st.header("Pending Wells")
+                    st.write("No pending wells available. You can dig a new well or chat with Anzar.")
+                
     elif selected_tab == tabs[1]:
         monitor_page()
 
@@ -531,7 +640,7 @@ def main_page():
 
     elif selected_tab == tabs[4]:
         st.write(translations[language]["edit_info"])
-
+        
 if "authenticated" not in st.session_state or not st.session_state["authenticated"]:
     auth_page()
 else:
