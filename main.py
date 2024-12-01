@@ -174,7 +174,6 @@ map_html = """
 rag_pipeline = RAGPipeline()
 
 def get_coordinates():
-    """Fetch the coordinates from the server."""
     try:
         response = requests.get('http://127.0.0.1:8000/get_coordinates')
         data = response.json()
@@ -205,17 +204,47 @@ def step_one():
         st.rerun()
 
 def step_two():
-    st.session_state["digwell_step"] = 1
+    if "digwell_step" not in st.session_state or st.session_state["digwell_step"] != 2:
+        st.error("You must confirm your location first.")
+        return
+
     st.markdown(f"<h2 style='text-align: center;'>{translations[language]['step_2_title']}</h2>", unsafe_allow_html=True)
     lat, lon = get_coordinates()
 
     if lat and lon:
-        with st.spinner(translations[language]["running_prediction"]):
-            result = run_predictor(lat, lon)
-            st.markdown(f"<p style='text-align: center;'>{translations[language]['prediction_result']} {str(result)} meters</p>", unsafe_allow_html=True)
+        with st.spinner("Processing..."):
+            result = run_predictor(lat, lon)  # Assuming this function returns the predicted depth
+            if result:
+                st.markdown(f"<p style='text-align: center;'>{translations[language]['prediction_result']} {str(result)} meters</p>", unsafe_allow_html=True)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("license_well"):
+                        data = {
+                            "lat": lat,
+                            "lon": lon,
+                            "predicted_depth": result  # Add the predicted depth here
+                        }
+                        response = requests.post(
+                            f"{API_BASE_URL}/license_well", 
+                            headers={"Authorization": f"Bearer {st.session_state['auth_token']}"}, 
+                            json=data
+                        )
+                        if response.status_code == 200:
+                            st.success("Well licensed, moving you back to step 1")
+                            time.sleep(3)
+                            st.session_state["digwell_step"] = 1
+                            st.rerun()
+                        else:
+                            st.error(response.json().get("detail", "Error licensing the well"))
+                with col2:
+                    if st.button("cancel"):
+                        # Reset or go back to step 1 if needed
+                        st.session_state["digwell_step"] = 1
+                        st.rerun()
     else:
         st.error(translations[language]["please_select_location"])
-
+        
 def run_predictor(lat, lon):
     try:
         command = ["python3", "predictor.py", "--lon", str(float(lon)), "--lat", str(float(lat))]
@@ -362,7 +391,10 @@ def monitor_page():
 
 def login_user(username, password):
     response = requests.post(f"{API_BASE_URL}/login", json={"username": username, "password": password})
-    return response.json()
+    data = response.json()
+    if data.get("success"):
+        st.session_state["auth_token"] = data.get("token")
+    return data
 
 def create_account(user_data):
     response = requests.post(f"{API_BASE_URL}/signup", json=user_data)
@@ -459,7 +491,8 @@ def main_page():
     )
 
     selected_tab = st.session_state.get("selected_tab", tabs[0])
-
+    if selected_tab != tabs[3]:
+        st.session_state["digwell_step"] = 1
     if selected_tab == tabs[0]:
         st.markdown(f"<h1 style='text-align: center;'>{translations[language]['home']}</h1>", unsafe_allow_html=True)
 

@@ -1,18 +1,48 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, Float, Boolean, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import jwt
 import hashlib
+import datetime
 
+# FastAPI Application
 app = FastAPI()
 
-DATABASE_URL = "sqlite:///./users.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class User(Base):
+# JWT Configuration
+SECRET_KEY = "PLEASEDONOTTROWSAUSAGEPIZZAAWAY"
+ALGORITHM = "HS256"
+security = HTTPBearer()
+
+# Database URLs
+DATABASE_URL_USERS = "sqlite:///./users.db"
+DATABASE_URL_WELLS = "sqlite:///./wells.db"
+
+# Database Engines
+engine_users = create_engine(DATABASE_URL_USERS, connect_args={"check_same_thread": False})
+engine_wells = create_engine(DATABASE_URL_WELLS, connect_args={"check_same_thread": False})
+
+# Session Makers
+SessionLocalUsers = sessionmaker(autocommit=False, autoflush=False, bind=engine_users)
+SessionLocalWells = sessionmaker(autocommit=False, autoflush=False, bind=engine_wells)
+
+# Base Classes
+BaseUsers = declarative_base()
+BaseWells = declarative_base()
+
+# User Table
+class User(BaseUsers):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
@@ -24,8 +54,62 @@ class User(Base):
     id_number = Column(String, nullable=False)
     city = Column(String, nullable=False)
 
-Base.metadata.create_all(bind=engine)
+# Well Table
+class Well(BaseWells):
+    __tablename__ = "wells"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, nullable=False)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    gender = Column(String, nullable=False)
+    nationality = Column(String, nullable=False)
+    id_number = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    lon = Column(Float, nullable=False)
+    lat = Column(Float, nullable=False)
+    licensed = Column(Boolean, default=False)
+    license_code = Column(String, nullable=True)
+    predicted_depth = Column(Float, nullable=False)  # New field for predicted depth
 
+# Create Tables
+BaseUsers.metadata.create_all(bind=engine_users)
+BaseWells.metadata.create_all(bind=engine_wells)
+
+# Utility Functions
+def get_db_users():
+    db = SessionLocalUsers()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def get_db_wells():
+    db = SessionLocalWells()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_jwt_token(username: str) -> str:
+    payload = {
+        "sub": username,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(days=1),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+def decode_jwt_token(token: str) -> str:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# Models
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -40,19 +124,21 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+class CoordinatesModel(BaseModel):
+    lat: float
+    lon: float
 
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+class LicenseWellRequest(BaseModel):
+    lat: float
+    lon: float
+    predicted_depth: float  # Added predicted depth to the request model
 
+# Global Variable for Coordinates
+current_coordinates = {"lat": None, "lon": None}
+
+# Endpoints
 @app.post("/signup")
-def signup(user: UserCreate, db: SessionLocal = Depends(get_db)):
-    # Check if the user already exists
+def signup(user: UserCreate, db: SessionLocalUsers = Depends(get_db_users)):
     if db.query(User).filter(User.username == user.username).first():
         raise HTTPException(status_code=400, detail="User already exists")
     
@@ -71,22 +157,14 @@ def signup(user: UserCreate, db: SessionLocal = Depends(get_db)):
     db.refresh(new_user)
     return {"success": True, "message": "Account created successfully"}
 
-# Login endpoint
 @app.post("/login")
-def login(user: UserLogin, db: SessionLocal = Depends(get_db)):
-    # Find the user in the database
+def login(user: UserLogin, db: SessionLocalUsers = Depends(get_db_users)):
     db_user = db.query(User).filter(User.username == user.username).first()
     if not db_user or db_user.hashed_password != hash_password(user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"success": True, "message": "Login successful"}
-
-# Coordinates model and endpoints
-class CoordinatesModel(BaseModel):
-    lat: float
-    lon: float
-
-# Global variable to store coordinates
-current_coordinates = {"lat": None, "lon": None}
+    
+    token = create_jwt_token(user.username)
+    return {"success": True, "token": token}
 
 @app.post("/set_coordinates")
 async def set_coordinates(coords: CoordinatesModel):
@@ -94,13 +172,45 @@ async def set_coordinates(coords: CoordinatesModel):
     current_coordinates["lon"] = coords.lon
     return {"status": "success"}
 
-@app.post("/clear_coordinates")
-async def clear_coordinates():
-    """Clears the stored coordinates."""
-    current_coordinates["lat"] = None
-    current_coordinates["lon"] = None
-    return {"status": "cleared"}
-
 @app.get("/get_coordinates")
 async def get_coordinates():
     return current_coordinates
+
+@app.post("/license_well")
+def license_well(
+    request: LicenseWellRequest,  # Use the new request model with predicted depth
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db_users: SessionLocalUsers = Depends(get_db_users),
+    db_wells: SessionLocalWells = Depends(get_db_wells)
+):
+    # Get logged-in username from JWT
+    username = decode_jwt_token(credentials.credentials)
+
+    # Fetch user details
+    user = db_users.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Ensure coordinates are set
+    if request.lat is None or request.lon is None:
+        raise HTTPException(status_code=400, detail="Coordinates not set")
+    
+    # Add new well to the database with the predicted depth
+    new_well = Well(
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        gender=user.gender,
+        nationality=user.nationality,
+        id_number=user.id_number,
+        city=user.city,
+        lon=request.lon,
+        lat=request.lat,
+        licensed=False,
+        license_code=None,
+        predicted_depth=request.predicted_depth  # Store predicted depth
+    )
+    db_wells.add(new_well)
+    db_wells.commit()
+    db_wells.refresh(new_well)
+    return {"success": True, "message": "Well licensed", "well_id": new_well.id}
