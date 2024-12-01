@@ -108,6 +108,17 @@ class UserCreate(BaseModel):
     id_number: str
     city: str
 
+class UserUpdate(BaseModel):
+    username: str | None = None  # Optional field for changing username
+    first_name: str
+    last_name: str
+    gender: str
+    nationality: str
+    id_number: str
+    city: str
+    password: str  # Current password for verification
+    new_password: str | None = None  # Optional field for updating password
+
 class UserLogin(BaseModel):
     username: str
     password: str
@@ -213,3 +224,67 @@ def well_to_dict(well: Well):
         "licensed": well.licensed,
         "license_code": well.license_code,
     }
+    
+@app.get("/get_user/{username}")
+def get_user_info(username: str, db: SessionLocalUsers = Depends(get_db_users)):
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "gender": user.gender,
+        "nationality": user.nationality,
+        "id_number": user.id_number,
+        "city": user.city,
+    }
+    
+@app.post("/update_user_info/{username}")
+def update_user_info(
+    username: str,
+    user_data: UserUpdate,
+    db_users: SessionLocalUsers = Depends(get_db_users),
+    db_wells: SessionLocalWells = Depends(get_db_wells),
+):
+    user = db_users.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify current password
+    if user.hashed_password != hash_password(user_data.password):
+        raise HTTPException(status_code=400, detail="Incorrect password")
+    
+    # Check for new username conflict
+    if user_data.username and user_data.username != username:
+        if db_users.query(User).filter(User.username == user_data.username).first():
+            raise HTTPException(status_code=400, detail="Username already exists")
+        user.username = user_data.username
+
+    # Update other user details
+    user.first_name = user_data.first_name
+    user.last_name = user_data.last_name
+    user.gender = user_data.gender
+    user.nationality = user_data.nationality
+    user.id_number = user_data.id_number
+    user.city = user_data.city
+
+    # Update password if provided
+    if user_data.new_password:
+        user.hashed_password = hash_password(user_data.new_password)
+
+    # Update corresponding wells data
+    wells = db_wells.query(Well).filter(Well.username == username).all()
+    for well in wells:
+        well.username = user_data.username or username  # Update username if changed
+        well.first_name = user_data.first_name
+        well.last_name = user_data.last_name
+        well.gender = user_data.gender
+        well.nationality = user_data.nationality
+        well.id_number = user_data.id_number
+        well.city = user_data.city
+
+    db_users.commit()
+    db_wells.commit()
+    return {"success": True, "message": "User information updated successfully"}

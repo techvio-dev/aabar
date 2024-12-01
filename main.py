@@ -7,6 +7,8 @@ import numpy as np
 import random
 import time
 from chatbot import RAGPipeline
+from pydantic import BaseModel
+
 st.set_page_config(page_title="Aabar Dashboard", layout="wide")
 
 def get_language():
@@ -236,11 +238,10 @@ def step_two():
         with st.spinner("Processing..."):
             result = run_predictor(lat, lon)
             if result:
-                st.markdown(f"<p style='text-align: center;'>{translations[language]['prediction_result']} {str(result)} meters</p>", unsafe_allow_html=True)
-                
+                st.success(f"{translations[language]['prediction_result']} {str(result)} meters")
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("license_well"):
+                    if st.button("License well"):
                         data = {
                             "lat": lat,
                             "lon": lon,
@@ -530,6 +531,34 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+class UserUpdate(BaseModel):
+    username: str | None = None  # Optional field for changing username
+    first_name: str
+    last_name: str
+    gender: str
+    nationality: str
+    id_number: str
+    city: str
+    password: str  # Current password for verification
+    new_password: str | None = None  # Optional field for updating password
+
+
+# Fetch the user data
+def fetch_user_data(username):
+    response = requests.get(f"http://127.0.0.1:8000/get_user/{username}")
+    if response.status_code == 200:
+        return response.json()  # Return the user data in JSON format
+    else:
+        st.error("Failed to fetch user data.")
+        return None
+
+# Function to update user info and well info
+def update_user_info(username, user_update_data):
+    """Send a POST request to update user info."""
+    url = f"{API_BASE_URL}/update_user_info/{username}"
+    response = requests.post(url, json=user_update_data)
+    return response.json()
+
 # Main page function
 def main_page():
     st.sidebar.markdown(f"<h1 style='text-align: center;'>{translations[language]['Aabar Dashboard']}</h1>", unsafe_allow_html=True)
@@ -640,6 +669,53 @@ def main_page():
 
     elif selected_tab == tabs[4]:
         st.write(translations[language]["edit_info"])
+
+        # Fetch user data for pre-fill
+        user_data = fetch_user_data(st.session_state['username'])  # Adjust based on your app
+
+        if user_data:
+            with st.form(key="edit_user_form"):
+                current_password = st.text_input("Current Password", type="password")
+                new_username = st.text_input("New Username", value=user_data['username'])
+                first_name = st.text_input("First Name", value=user_data['first_name'])
+                last_name = st.text_input("Last Name", value=user_data['last_name'])
+                gender = st.selectbox("Gender", ["Male", "Female"], index=0 if user_data['gender'] == "Male" else 1)
+                nationality = st.text_input("Nationality", value=user_data['nationality'])
+                id_number = st.text_input("ID Number", value=user_data['id_number'])
+                city = st.text_input("City", value=user_data['city'])
+                new_password = st.text_input("New Password", type="password")
+                confirm_new_password = st.text_input("Confirm New Password", type="password")
+
+                submit_button = st.form_submit_button("Save Changes")
+
+                if submit_button:
+                    if current_password:
+                        if new_password and new_password != confirm_new_password:
+                            st.error("New password and confirmation do not match.")
+                        else:
+                            user_update_data = {
+                                "username": new_username if new_username != user_data['username'] else None,
+                                "first_name": first_name,
+                                "last_name": last_name,
+                                "gender": gender,
+                                "nationality": nationality,
+                                "id_number": id_number,
+                                "city": city,
+                                "password": current_password,
+                                "new_password": new_password,
+                            }
+                    # Call API to update user info
+                            response = update_user_info(st.session_state['username'], user_update_data)
+                    
+                            if response.get("success"):
+                                st.success(response.get("message"))
+                                # Update session username if changed
+                                if new_username and new_username != st.session_state['username']:
+                                    st.session_state['username'] = new_username
+                            else:
+                                st.error(response.get("detail"))
+                    else:
+                        st.error("Please enter your current password to proceed.")
         
 if "authenticated" not in st.session_state or not st.session_state["authenticated"]:
     auth_page()
