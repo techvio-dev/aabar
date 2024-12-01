@@ -61,6 +61,24 @@ translations = {
         "authentication page": "Aabar Authentication",
         "Aabar Dashboard": "Aabar Dashboard",
         "looking_for": "Just a minute while I review my notes...",
+        "first_name": "First Name",
+        "last_name": "Last Name",
+        "gender": "Gender",
+        "nationality": "Nationality",
+        "id_number": "ID Number",
+        "city": "City",
+        "licensed_wells": "Licensed Wells",
+        "no_licensed_wells": "No licensed wells available. Please wait for licensing to be finished.",
+        "longitude": "Longitude",
+        "latitude": "Latitude",
+        "predicted_depth": "Predicted Depth",
+        "pending_wells": "Pending Wells",
+        "no_pending_wells": "No pending wells are under review. All wells have been licensed or cleared.",
+        "status_licensed": "Status: Licensed",
+        "status_pending": "Status: Pending Review",
+        "processing": "Processing...",
+        "license_well": "License Well",
+        "cancel": "Cancel",
     },
     "ar": {
         "step_1_title": "الخطوة 1: اختر موقعًا على الخريطة",
@@ -105,6 +123,24 @@ translations = {
         "authentication page": "ولوج أبار",
         "Aabar Dashboard": "لوحة تحكم أبار",
         "looking_for": "أمهلني دقيقة لأراجع معلوماتي...",
+        "first_name": "الاسم الأول",
+        "last_name": "اسم العائلة",
+        "gender": "الجنس",
+        "nationality": "الجنسية",
+        "id_number": "رقم الهوية",
+        "city": "المدينة",
+        "licensed_wells": "الآبار المرخصة",
+        "no_licensed_wells": "لا توجد آبار مرخصة حاليًا. يرجى الانتظار حتى يتم الانتهاء من الترخيص.",
+        "longitude": "خط الطول",
+        "latitude": "خط العرض",
+        "predicted_depth": "العمق المتوقع",
+        "pending_wells": "الآبار قيد الانتظار",
+        "no_pending_wells": "لا توجد آبار قيد المراجعة. تم ترخيص جميع الآبار أو إزالتها.",
+        "status_licensed": "الحالة: مرخصة",
+        "status_pending": "الحالة: قيد المراجعة",
+        "processing": "جاري المعالجة...",
+        "license_well": "ترخيص البئر",
+        "cancel": "إلغاء",
     },
 }
 
@@ -235,13 +271,13 @@ def step_two():
     lat, lon = get_coordinates()
 
     if lat and lon:
-        with st.spinner("Processing..."):
+        with st.spinner(translations[language]["processing"]):
             result = run_predictor(lat, lon)
             if result:
                 st.success(f"{translations[language]['prediction_result']} {str(result)} meters")
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("License well"):
+                    if st.button(translations[language]["license_well"]):
                         data = {
                             "lat": lat,
                             "lon": lon,
@@ -260,7 +296,7 @@ def step_two():
                         else:
                             st.error(response.json().get("detail", "Error licensing the well"))
                 with col2:
-                    if st.button("cancel"):
+                    if st.button(translations[language]["cancel"]):
                         st.session_state["digwell_step"] = 1
                         st.rerun()
     else:
@@ -456,12 +492,12 @@ def auth_page():
         st.markdown(f"<h2 style='text-align: center;'>{translations[language]['signup']}</h2>", unsafe_allow_html=True)
         new_username = st.text_input(translations[language]["username"], key="signup_username")
         new_password = st.text_input(translations[language]["password"], type="password", key="signup_password")
-        first_name = st.text_input("First Name", key="signup_first_name")
+        first_name = st.text_input(translations[language]["first_name"], key="signup_first_name")
         last_name = st.text_input("Last Name", key="signup_last_name")
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="signup_gender")
-        nationality = st.text_input("Nationality", key="signup_nationality")
-        id_number = st.text_input("ID Number", key="signup_id_number")
-        city = st.text_input("City", key="signup_city")
+        gender = st.selectbox(translations[language]["gender"], ["Male", "Female"], key="signup_gender")
+        nationality = st.text_input(translations[language]["nationality"], key="signup_nationality")
+        id_number = st.text_input(translations[language]["id_number"], key="signup_id_number")
+        city = st.text_input(translations[language]["city"], key="signup_city")
         
         if st.button(translations[language]["signup"]):
             if all([first_name, last_name, gender, nationality, id_number, city, new_username, new_password]):
@@ -597,42 +633,41 @@ def main_page():
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    st.header("Licensed Wells")
+                    st.header(translations[language]["licensed_wells"])
                     if not licensed_wells:
-                        st.write("No licensed wells available. Please wait for licensing to be finished.")
+                        st.write(translations[language]["no_licensed_wells"])
                     else:
                         for well in licensed_wells:
                             well_name = f"Well N{well['id']}"
                             well_class = 'well-licensed'
                             st.markdown(f'<div class="well-title">{well_name}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info">**Longitude:** {well["lon"]}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info">**Latitude:** {well["lat"]}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info">**Predicted Depth:** {well["predicted_depth"]} meters</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info">**License Code:** {well.get("license_code", "Not available")}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info status-licensed">**Status:** Licensed</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">{translations[language]["longitude"]}: {well["lon"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">{translations[language]["latitude"]}: {well["lat"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">{translations[language]["predicted_depth"]}: {well["predicted_depth"]} meters</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">License code:** {well.get("license_code", "Not available")}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info status-licensed">{translations[language]["status_licensed"]}</div>', unsafe_allow_html=True)
 
                 with col2:
-                    st.header("Pending Wells")
+                    st.header(translations[language]["pending_wells"])
                     if not pending_wells:
-                        st.write("No pending wells available. You can dig a new well or chat with Anzar.")
+                        st.write(translations[language]["no_pending_wells"])
                     else:
                         for well in pending_wells:
                             well_name = f"Well N{well['id']}"
                             st.markdown(f'<div class="well-title">{well_name}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info"><strong>Longitude:</strong> {well["lon"]}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info"><strong>Latitude:<strong> {well["lat"]}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info"><strong>Predicted Depth:<strong> {well["predicted_depth"]} meters</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info"><strong>License Code:<strong> {well.get("license_code", "Not available")}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="well-info status-pending"><strong>Status:<strong> Pending</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">{translations[language]["longitude"]}: {well["lon"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">{translations[language]["latitude"]}: {well["lat"]}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info">{translations[language]["predicted_depth"]}: {well["predicted_depth"]} meters</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="well-info status-pending">{translations[language]["status_pending"]}</div>', unsafe_allow_html=True)
 
             else:
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.header("Licensed Wells")
-                    st.write("No licensed wells available. Please wait for licensing to be finished.")
+                    st.header(translations[language]["licensed_wells"])
+                    st.write(translations[language]["no_licensed_wells"])
                 with col2:
-                    st.header("Pending Wells")
-                    st.write("No pending wells available. You can dig a new well or chat with Anzar.")
+                    st.header(translations[language]["pending_wells"])
+                    st.write(translations[language]["no_pending_wells"])
                 
     elif selected_tab == tabs[1]:
         monitor_page()
@@ -668,7 +703,7 @@ def main_page():
             step_two()
 
     elif selected_tab == tabs[4]:
-        st.write(translations[language]["edit_info"])
+        st.header(translations[language]["edit_info"])
 
         # Fetch user data for pre-fill
         user_data = fetch_user_data(st.session_state['username'])  # Adjust based on your app
@@ -677,12 +712,12 @@ def main_page():
             with st.form(key="edit_user_form"):
                 current_password = st.text_input("Current Password", type="password")
                 new_username = st.text_input("New Username", value=user_data['username'])
-                first_name = st.text_input("First Name", value=user_data['first_name'])
-                last_name = st.text_input("Last Name", value=user_data['last_name'])
-                gender = st.selectbox("Gender", ["Male", "Female"], index=0 if user_data['gender'] == "Male" else 1)
-                nationality = st.text_input("Nationality", value=user_data['nationality'])
-                id_number = st.text_input("ID Number", value=user_data['id_number'])
-                city = st.text_input("City", value=user_data['city'])
+                first_name = st.text_input(translations[language]["first_name"], value=user_data['first_name'])
+                last_name = st.text_input(translations[language]["last_name"], value=user_data['last_name'])
+                gender = st.selectbox(translations[language]["gender"], ["Male", "Female"], index=0 if user_data['gender'] == "Male" else 1)
+                nationality = st.text_input(translations[language]["nationality"], value=user_data['nationality'])
+                id_number = st.text_input(translations[language]["id_number"], value=user_data['id_number'])
+                city = st.text_input(translations[language]["city"], value=user_data['city'])
                 new_password = st.text_input("New Password", type="password")
                 confirm_new_password = st.text_input("Confirm New Password", type="password")
 
